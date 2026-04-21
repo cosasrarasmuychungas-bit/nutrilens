@@ -620,22 +620,25 @@ export default function App() {
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
+  const [ready, setReady] = useState(false);
 
-  // Load today's meals from history
+  // Load today's meals from history — must happen before any saves
   useEffect(() => {
     const h = ls.get("nl-history") || {};
     if (h[todStr]) setMeals(h[todStr].meals || []);
+    setReady(true);
   }, []);
 
-  // Save meals to history whenever they change
+  // Save meals to history — only after initial load is done
   useEffect(() => {
+    if (!ready) return;
     const nh = { ...history, [todStr]: { meals, date:todStr } };
     ls.set("nl-history", nh);
     setHistory(nh);
-  }, [meals]);
+  }, [meals, ready]);
 
-  useEffect(() => { ls.set("nl-goals", goals); }, [goals]);
-  useEffect(() => { ls.set("nl-slots", slots); }, [slots]);
+  useEffect(() => { if (ready) ls.set("nl-goals", goals); }, [goals, ready]);
+  useEffect(() => { if (ready) ls.set("nl-slots", slots); }, [slots, ready]);
 
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
