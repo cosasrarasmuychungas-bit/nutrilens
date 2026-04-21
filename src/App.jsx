@@ -34,7 +34,31 @@ const S = {
 // ── localStorage helpers ──────────────────────────────────────
 const ls = {
   get: (key) => { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; } },
-  set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
+  set: (key, val) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+      return true;
+    } catch (e) {
+      // Quota exceeded — try to free space by stripping old thumbnails
+      if (key === "nl-history" && val && typeof val === "object") {
+        try {
+          const stripped = {};
+          const today = new Date().toISOString().split("T")[0];
+          for (const [date, day] of Object.entries(val)) {
+            if (date === today) {
+              stripped[date] = day; // keep today's full data
+            } else if (day.meals) {
+              // strip thumbnails from older days
+              stripped[date] = { ...day, meals: day.meals.map(m => ({ ...m, thumbnail: null })) };
+            }
+          }
+          localStorage.setItem(key, JSON.stringify(stripped));
+          return true;
+        } catch { return false; }
+      }
+      return false;
+    }
+  },
 };
 
 // ── API helpers ───────────────────────────────────────────────
@@ -718,11 +742,46 @@ export default function App() {
     const isHeic = file.type==="image/heic"||file.type==="image/heif"||(file.name||"").toLowerCase().endsWith(".heic")||(file.name||"").toLowerCase().endsWith(".heif");
     if (isHeic) { setError("Formato HEIC no compatible. Ve a Ajustes → Cámara → Formatos → Más compatible."); return; }
     try {
-      const dataUrl = await new Promise((res,rej) => { const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsDataURL(file); });
-      setPreview(dataUrl);
-      const base64 = dataUrl.split(",")[1];
-      const mimeType = file.type?.startsWith("image/") ? file.type : "image/jpeg";
-      await addMeal(null, base64, mimeType, dataUrl);
+      // Compress image in two versions: one for AI analysis (1024px), one thumbnail for storage (300px)
+      const { bigBase64, bigMime, smallThumbnail } = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onerror = rej;
+        reader.onload = ev => {
+          const img = new Image();
+          img.onerror = rej;
+          img.onload = () => {
+            // Big version for AI (max 1024px)
+            const BIG = 1024;
+            let bw = img.width, bh = img.height;
+            if (bw > BIG || bh > BIG) {
+              if (bw > bh) { bh = Math.round(bh * BIG / bw); bw = BIG; }
+              else { bw = Math.round(bw * BIG / bh); bh = BIG; }
+            }
+            const bigCanvas = document.createElement("canvas");
+            bigCanvas.width = bw; bigCanvas.height = bh;
+            bigCanvas.getContext("2d").drawImage(img, 0, 0, bw, bh);
+            const bigUrl = bigCanvas.toDataURL("image/jpeg", 0.82);
+
+            // Small thumbnail for storage (max 300px at 0.6 quality)
+            const SMALL = 300;
+            let sw = img.width, sh = img.height;
+            if (sw > SMALL || sh > SMALL) {
+              if (sw > sh) { sh = Math.round(sh * SMALL / sw); sw = SMALL; }
+              else { sw = Math.round(sw * SMALL / sh); sh = SMALL; }
+            }
+            const smallCanvas = document.createElement("canvas");
+            smallCanvas.width = sw; smallCanvas.height = sh;
+            smallCanvas.getContext("2d").drawImage(img, 0, 0, sw, sh);
+            const smallUrl = smallCanvas.toDataURL("image/jpeg", 0.6);
+
+            res({ bigBase64: bigUrl.split(",")[1], bigMime: "image/jpeg", smallThumbnail: smallUrl });
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+      setPreview(smallThumbnail);
+      await addMeal(null, bigBase64, bigMime, smallThumbnail);
     } catch { setError("No se pudo leer la imagen."); }
     finally { setPreview(null); }
   }, [addMeal]);
