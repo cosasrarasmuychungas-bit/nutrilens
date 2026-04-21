@@ -57,7 +57,7 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-sonnet-4-5",
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: userContent }],
@@ -114,8 +114,8 @@ function SetupScreen({ onSave }) {
       setError("La clave debe empezar por sk-ant-");
       return;
     }
-    
-    }
+    // Skip verification test, just save the key directly
+    onSave(key.trim());
   };
 
   return (
@@ -958,5 +958,3 @@ export default function App() {
     </div>
   );
 }
-
-
