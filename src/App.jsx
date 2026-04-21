@@ -187,8 +187,33 @@ function MealCard({ meal, onDelete, onUpdate, apiKey }) {
   const [editing, setEditing] = useState(false);
   const [editPlatos, setEditPlatos] = useState([]);
   const [recalculating, setRecalculating] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [newDesc, setNewDesc] = useState("");
+  const [recalcDesc, setRecalcDesc] = useState(false);
 
   const openEdit = () => { setEditPlatos((meal.platos||[]).map(p=>({...p}))); setEditing(true); };
+
+  const recalcFromDesc = async () => {
+    if (!newDesc.trim()) return;
+    setRecalcDesc(true);
+    try {
+      const result = await analyzeFood(apiKey, newDesc.trim(), null, null);
+      if (!result.error && result.platos?.length > 0) {
+        onUpdate({
+          ...meal,
+          platos: result.platos,
+          totalCalorias: result.totalCalorias || 0,
+          totalProteinas: result.totalProteinas || 0,
+          totalCarbohidratos: result.totalCarbohidratos || 0,
+          totalGrasas: result.totalGrasas || 0,
+          descripcion: newDesc.trim(),
+        });
+        setEditingDesc(false);
+        setNewDesc("");
+      }
+    } catch {}
+    finally { setRecalcDesc(false); }
+  };
 
   const save = (platos = editPlatos) => {
     const totalCalorias      = platos.reduce((s,p) => s+(parseFloat(p.calorias)||0), 0);
@@ -226,7 +251,6 @@ function MealCard({ meal, onDelete, onUpdate, apiKey }) {
           {onDelete && <button onClick={onDelete} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:18, lineHeight:1 }}>×</button>}
         </div>
       </div>
-
       {editing ? (
         <div>
           <div style={{ fontSize:11, color:C.text3, marginBottom:10, textTransform:"uppercase", letterSpacing:1 }}>Edita las cantidades y pulsa Recalcular</div>
@@ -277,6 +301,33 @@ function MealCard({ meal, onDelete, onUpdate, apiKey }) {
                   <span style={{ color:C.text2 }}>{p.nombre}</span><span style={{ color:C.text3 }}>{p.calorias} kcal</span>
                 </div>
               ))}
+            </div>
+          )}
+          {onUpdate && (
+            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+              {!editingDesc ? (
+                <button onClick={() => { setEditingDesc(true); setNewDesc(meal.descripcion||""); }}
+                  style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:12, fontWeight:600, padding:0 }}>
+                  ➕ Añadir ingredientes y recalcular
+                </button>
+              ) : (
+                <div>
+                  <div style={{ fontSize:11, color:C.text3, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Describe la comida completa</div>
+                  <textarea value={newDesc} onChange={e=>setNewDesc(e.target.value)}
+                    placeholder="Ej: patatas fritas con salsa brava y alioli"
+                    style={{ ...S.inp, resize:"vertical", minHeight:70, lineHeight:1.5, fontSize:13, marginBottom:8 }} />
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={() => { setEditingDesc(false); setNewDesc(""); }}
+                      style={{ flex:1, padding:"9px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:10, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                      Cancelar
+                    </button>
+                    <button onClick={recalcFromDesc} disabled={recalcDesc || !newDesc.trim()}
+                      style={{ flex:2, padding:"9px", background:recalcDesc||!newDesc.trim()?C.surface2:C.text, border:"none", borderRadius:10, color:recalcDesc||!newDesc.trim()?C.text3:C.bg, fontWeight:800, fontSize:13, cursor:recalcDesc||!newDesc.trim()?"default":"pointer" }}>
+                      {recalcDesc ? "⏳ Calculando..." : "🔄 Recalcular calorías"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
