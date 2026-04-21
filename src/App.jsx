@@ -114,17 +114,7 @@ function SetupScreen({ onSave }) {
       setError("La clave debe empezar por sk-ant-");
       return;
     }
-    setTesting(true);
-    setError("");
-    try {
-      await callClaude(key.trim(),
-        "Responde solo con: ok",
-        [{ type:"text", text:"test" }], 10);
-      onSave(key.trim());
-    } catch (e) {
-      setError("Clave incorrecta o sin créditos: " + e.message);
-    } finally {
-      setTesting(false);
+    
     }
   };
 
@@ -968,3 +958,4 @@ export default function App() {
     </div>
   );
 }
+
