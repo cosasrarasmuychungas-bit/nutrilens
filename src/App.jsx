@@ -647,7 +647,10 @@ function HealthScorePanel({ onClose, apiKey }) {
 // ── Main App ──────────────────────────────────────────────────
 export default function App() {
   const [apiKey,      setApiKey]      = useState(() => ls.get("nl-apikey") || "");
-  const [meals,       setMeals]       = useState([]);
+  const [meals,       setMeals]       = useState(() => {
+    const h = ls.get("nl-history") || {};
+    return h[today()]?.meals || [];
+  });
   const [goals,       setGoals]       = useState(() => ls.get("nl-goals") || DEFAULT_GOALS);
   const [slots,       setSlots]       = useState(() => ls.get("nl-slots") || DEFAULT_MEALS);
   const [selSlot,     setSelSlot]     = useState(DEFAULT_MEALS[2].id);
@@ -671,25 +674,16 @@ export default function App() {
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
-  const [ready, setReady] = useState(false);
 
-  // Load today's meals from history — must happen before any saves
+  // Save meals to history on every change
   useEffect(() => {
-    const h = ls.get("nl-history") || {};
-    if (h[todStr]) setMeals(h[todStr].meals || []);
-    setReady(true);
-  }, []);
-
-  // Save meals to history — only after initial load is done
-  useEffect(() => {
-    if (!ready) return;
-    const nh = { ...history, [todStr]: { meals, date:todStr } };
+    const nh = { ...ls.get("nl-history") || {}, [todStr]: { meals, date:todStr } };
     ls.set("nl-history", nh);
     setHistory(nh);
-  }, [meals, ready]);
+  }, [meals]);
 
-  useEffect(() => { if (ready) ls.set("nl-goals", goals); }, [goals, ready]);
-  useEffect(() => { if (ready) ls.set("nl-slots", slots); }, [slots, ready]);
+  useEffect(() => { ls.set("nl-goals", goals); }, [goals]);
+  useEffect(() => { ls.set("nl-slots", slots); }, [slots]);
 
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
