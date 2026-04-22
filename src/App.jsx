@@ -216,15 +216,20 @@ function MacroBar({ label, value, goal, color }) {
   );
 }
 
-function MealCard({ meal, onDelete, onUpdate, apiKey }) {
+function MealCard({ meal, onDelete, onUpdate, apiKey, slots }) {
   const [editing, setEditing] = useState(false);
   const [editPlatos, setEditPlatos] = useState([]);
+  const [editSlot, setEditSlot] = useState(null);
   const [recalculating, setRecalculating] = useState(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [newDesc, setNewDesc] = useState("");
   const [recalcDesc, setRecalcDesc] = useState(false);
 
-  const openEdit = () => { setEditPlatos((meal.platos||[]).map(p=>({...p}))); setEditing(true); };
+  const openEdit = () => {
+    setEditPlatos((meal.platos||[]).map(p=>({...p})));
+    setEditSlot({ label: meal.slot, emoji: meal.slotEmoji });
+    setEditing(true);
+  };
 
   const recalcFromDesc = async () => {
     if (!newDesc.trim()) return;
@@ -253,7 +258,7 @@ function MealCard({ meal, onDelete, onUpdate, apiKey }) {
     const totalProteinas     = platos.reduce((s,p) => s+(parseFloat(p.proteinas)||0), 0);
     const totalCarbohidratos = platos.reduce((s,p) => s+(parseFloat(p.carbohidratos)||0), 0);
     const totalGrasas        = platos.reduce((s,p) => s+(parseFloat(p.grasas)||0), 0);
-    onUpdate({ ...meal, platos, totalCalorias:Math.round(totalCalorias), totalProteinas:Math.round(totalProteinas), totalCarbohidratos:Math.round(totalCarbohidratos), totalGrasas:Math.round(totalGrasas) });
+    onUpdate({ ...meal, platos, totalCalorias:Math.round(totalCalorias), totalProteinas:Math.round(totalProteinas), totalCarbohidratos:Math.round(totalCarbohidratos), totalGrasas:Math.round(totalGrasas), slot: editSlot?.label || meal.slot, slotEmoji: editSlot?.emoji || meal.slotEmoji });
     setEditing(false);
   };
 
@@ -286,6 +291,15 @@ function MealCard({ meal, onDelete, onUpdate, apiKey }) {
       </div>
       {editing ? (
         <div>
+          <div style={{ fontSize:11, color:C.text3, marginBottom:8, textTransform:"uppercase", letterSpacing:1 }}>¿A qué comida mover?</div>
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
+            {(slots||[]).map(sl => (
+              <button key={sl.id} onClick={() => setEditSlot(sl)}
+                style={{ padding:"5px 12px", borderRadius:100, border:"none", cursor:"pointer", background: editSlot?.label===sl.label ? C.text : C.surface2, color: editSlot?.label===sl.label ? C.bg : C.text2, fontSize:12, fontWeight:700 }}>
+                {sl.emoji} {sl.label}
+              </button>
+            ))}
+          </div>
           <div style={{ fontSize:11, color:C.text3, marginBottom:10, textTransform:"uppercase", letterSpacing:1 }}>Edita las cantidades y pulsa Recalcular</div>
           {editPlatos.map((plato,i) => (
             <div key={i} style={{ background:C.surface2, borderRadius:12, padding:12, marginBottom:8 }}>
@@ -986,7 +1000,7 @@ export default function App() {
               <>
                 <span style={{ ...S.label, marginTop:8 }}>Registrado hoy</span>
                 {meals.map(m => (
-                  <MealCard key={m.id} meal={m} apiKey={apiKey}
+                  <MealCard key={m.id} meal={m} apiKey={apiKey} slots={slots}
                     onDelete={()=>{ setMeals(p=>p.filter(x=>x.id!==m.id)); setRecs(null); }}
                     onUpdate={updated=>setMeals(p=>p.map(x=>x.id===updated.id?updated:x))}
                   />
