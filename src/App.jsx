@@ -548,49 +548,22 @@ function Settings({ goals, setGoals, slots, setSlots, onClose, onResetKey }) {
   );
 }
 
-function HealthScorePanel({ onClose, apiKey }) {
-  const [phase, setPhase] = useState("idle");
-  const [result, setResult] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [errMsg, setErrMsg] = useState(null);
-  const [barcodeResult, setBarcodeResult] = useState(null);
-  const camRef     = useRef();
-  const fileRef    = useRef();
-  const barcodeRef = useRef();
+// ── Live Barcode Scanner ──────────────────────────────────────
+function BarcodeScanner({ onDetected, onClose }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const rafRef = useRef(null);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState(null);
 
-  const scoreColor = (n) => n>=75?C.green:n>=50?C.yellow:n>=30?C.orange:C.red;
-  const macroColor = (v) => v==="bajo"?C.green:v==="medio"?C.yellow:C.red;
-
-  const scanBarcode = async (file) => {
-    if (!file) return;
-    setPhase("analyzing");
-    setErrMsg(null);
+  const lookupBarcode = async (barcode) => {
     try {
-      // Try BarcodeDetector API first (Chrome/Android)
-      let barcode = null;
-      if ("BarcodeDetector" in window) {
-        const bitmap = await createImageBitmap(file);
-        const detector = new window.BarcodeDetector({ formats: ["ean_13","ean_8","upc_a","upc_e","code_128"] });
-        const barcodes = await detector.detect(bitmap);
-        if (barcodes.length > 0) barcode = barcodes[0].rawValue;
-      }
-      if (!barcode) {
-        // Fallback: read barcode from image via QuaggaJS or ZXing — use canvas approach
-        setErrMsg("No se detectó el código de barras. Asegúrate de que está bien enfocado e inténtalo de nuevo.");
-        setPhase("error");
-        return;
-      }
-      // Query Open Food Facts API
       const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
       const data = await res.json();
-      if (data.status !== 1 || !data.product) {
-        setErrMsg("Producto no encontrado en la base de datos. Prueba a añadirlo manualmente.");
-        setPhase("error");
-        return;
-      }
+      if (data.status !== 1 || !data.product) return null;
       const p = data.product;
       const n = p.nutriments || {};
-      const per100 = {
+      return {
         nombre: p.product_name || p.product_name_es || "Producto",
         marca: p.brands || "",
         imagen: p.image_url || null,
@@ -600,14 +573,150 @@ function HealthScorePanel({ onClose, apiKey }) {
         grasas100: Math.round((n.fat_100g || 0) * 10) / 10,
         azucares100: Math.round((n.sugars_100g || 0) * 10) / 10,
         fibra100: Math.round((n.fiber_100g || 0) * 10) / 10,
-        sal100: Math.round((n.salt_100g || 0) * 100) / 100,
         barcode,
       };
-      setBarcodeResult(per100);
-      setPhase("barcode");
-    } catch(e) {
-      setErrMsg("Error al escanear. Comprueba tu conexión e inténtalo de nuevo.");
+    } catch { return null; }
+  };
+
+  useEffect(() => {
+    let stopped = false;
+    const start = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        if (stopped) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setScanning(true);
+        }
+      } catch(e) {
+        setError("No se puede acceder a la cámara. Acepta el permiso cuando el navegador lo pida.");
+      }
+    };
+    start();
+    return () => {
+      stopped = true;
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  // Scan loop using BarcodeDetector or canvas+ZXing
+  useEffect(() => {
+    if (!scanning) return;
+    let active = true;
+    let lastBarcode = null;
+
+    const scan = async () => {
+      if (!active || !videoRef.current || videoRef.current.readyState < 2) {
+        rafRef.current = requestAnimationFrame(scan);
+        return;
+      }
+      try {
+        if ("BarcodeDetector" in window) {
+          const detector = new window.BarcodeDetector({ formats: ["ean_13","ean_8","upc_a","upc_e","code_128","qr_code"] });
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes.length > 0 && barcodes[0].rawValue !== lastBarcode) {
+            lastBarcode = barcodes[0].rawValue;
+            active = false;
+            if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+            const product = await lookupBarcode(barcodes[0].rawValue);
+            onDetected(product, barcodes[0].rawValue);
+            return;
+          }
+        }
+      } catch {}
+      if (active) rafRef.current = requestAnimationFrame(scan);
+    };
+    rafRef.current = requestAnimationFrame(scan);
+    return () => { active = false; if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [scanning]);
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"#000", zIndex:400, display:"flex", flexDirection:"column" }}>
+      {/* Header */}
+      <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:10 }}>
+        <div style={{ color:"#fff", fontSize:16, fontWeight:700 }}>Escanear código de barras</div>
+        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:10, color:"#fff", fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+      </div>
+
+      {/* Camera view */}
+      <div style={{ flex:1, position:"relative", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        {error ? (
+          <div style={{ textAlign:"center", padding:24 }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>📷</div>
+            <div style={{ color:"#ef4444", fontSize:14, marginBottom:20 }}>{error}</div>
+            <button onClick={onClose} style={{ padding:"12px 24px", background:"#fff", border:"none", borderRadius:12, fontWeight:800, cursor:"pointer" }}>Cerrar</button>
+          </div>
+        ) : (
+          <>
+            <video ref={videoRef} playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
+            {/* Dark overlay with transparent center */}
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
+              <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.5)" }} />
+              {/* Scanner window */}
+              <div style={{
+                position:"absolute", top:"50%", left:"50%",
+                transform:"translate(-50%,-60%)",
+                width:280, height:140,
+                background:"transparent",
+                boxShadow:"0 0 0 9999px rgba(0,0,0,0.55)",
+                borderRadius:8,
+              }}>
+                {/* Corner markers */}
+                {[["top:0;left:0","borderTop","borderLeft"],["top:0;right:0","borderTop","borderRight"],["bottom:0;left:0","borderBottom","borderLeft"],["bottom:0;right:0","borderBottom","borderRight"]].map(([pos,b1,b2],i) => (
+                  <div key={i} style={{
+                    position:"absolute",
+                    ...Object.fromEntries(pos.split(";").map(s => s.split(":").map(x=>x.trim()))),
+                    width:24, height:24,
+                    [b1]: `3px solid ${C.blue}`,
+                    [b2]: `3px solid ${C.blue}`,
+                    borderRadius: i===0?"4px 0 0 0":i===1?"0 4px 0 0":i===2?"0 0 0 4px":"0 0 4px 0",
+                  }} />
+                ))}
+                {/* Scanning line animation */}
+                <div style={{
+                  position:"absolute", left:0, right:0, height:2,
+                  background:`linear-gradient(90deg, transparent, ${C.blue}, transparent)`,
+                  animation:"scanline 1.5s ease-in-out infinite",
+                }} />
+              </div>
+            </div>
+            <div style={{ position:"absolute", bottom:40, left:0, right:0, textAlign:"center" }}>
+              <div style={{ color:"rgba(255,255,255,0.8)", fontSize:13 }}>Centra el código de barras en el recuadro</div>
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes scanline { 0%{top:0} 50%{top:calc(100% - 2px)} 100%{top:0} }`}</style>
+    </div>
+  );
+}
+
+function HealthScorePanel({ onClose, apiKey }) {
+  const [phase, setPhase] = useState("idle");
+  const [result, setResult] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [errMsg, setErrMsg] = useState(null);
+  const [barcodeResult, setBarcodeResult] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const camRef  = useRef();
+  const fileRef = useRef();
+
+  const scoreColor = (n) => n>=75?C.green:n>=50?C.yellow:n>=30?C.orange:C.red;
+  const macroColor = (v) => v==="bajo"?C.green:v==="medio"?C.yellow:C.red;
+
+  const handleBarcodeDetected = (product, rawBarcode) => {
+    setShowScanner(false);
+    if (!product) {
+      setErrMsg(`Código ${rawBarcode} no encontrado en la base de datos. Prueba con otro producto.`);
       setPhase("error");
+    } else {
+      setBarcodeResult(product);
+      setPhase("barcode");
     }
   };
 
@@ -650,6 +759,7 @@ function HealthScorePanel({ onClose, apiKey }) {
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#000000f0", zIndex:300, overflowY:"auto" }}>
+      {showScanner && <BarcodeScanner onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
       <div style={{ maxWidth:430, margin:"0 auto", padding:"24px 20px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:24 }}>
           <div>
@@ -663,7 +773,6 @@ function HealthScorePanel({ onClose, apiKey }) {
           <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:24, textAlign:"center" }}>
             <input ref={camRef}  type="file" accept="image/*" capture="environment" onChange={e=>process(e.target.files[0])} style={{ display:"none" }} />
             <input ref={fileRef} type="file" accept="image/*" onChange={e=>process(e.target.files[0])} style={{ display:"none" }} />
-            <input ref={barcodeRef} type="file" accept="image/*" capture="environment" onChange={e=>scanBarcode(e.target.files[0])} style={{ display:"none" }} />
             <div style={{ fontSize:48, marginBottom:16 }}>🥗</div>
             <div style={{ fontSize:16, fontWeight:700, marginBottom:8 }}>Analiza cualquier comida</div>
             <div style={{ fontSize:13, color:C.text2, marginBottom:24, lineHeight:1.6 }}>Puntuación del 1 al 100 según ingredientes, macros, azúcares y calidad nutricional.</div>
@@ -675,10 +784,11 @@ function HealthScorePanel({ onClose, apiKey }) {
                 <span style={{ fontSize:28 }}>🖼️</span><span>Galería</span>
               </button>
             </div>
-            <button onClick={() => barcodeRef.current?.click()} style={{ width:"100%", padding:"14px 8px", background:C.surface2, border:`1px solid ${C.blue}44`, borderRadius:14, color:C.text, fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
-              <span style={{ fontSize:24 }}>📦</span><span>Escanear código de barras</span>
+            <button onClick={() => setShowScanner(true)}
+              style={{ width:"100%", padding:"14px", background:`${C.blue}22`, border:`1px solid ${C.blue}55`, borderRadius:14, color:C.blue, fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              <span style={{ fontSize:22 }}>📊</span><span>Escanear código de barras</span>
             </button>
-            <div style={{ fontSize:11, color:C.text3, marginTop:10 }}>Escanea el código de barras de un producto para ver sus valores nutricionales exactos</div>
+            <div style={{ fontSize:11, color:C.text3, marginTop:10 }}>Apunta la cámara al código y se detecta automáticamente</div>
           </div>
         )}
 
