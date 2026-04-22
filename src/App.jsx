@@ -551,10 +551,9 @@ function Settings({ goals, setGoals, slots, setSlots, onClose, onResetKey }) {
 // ── Live Barcode Scanner ──────────────────────────────────────
 function BarcodeScanner({ onDetected, onClose }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const rafRef = useRef(null);
-  const [scanning, setScanning] = useState(false);
+  const readerRef = useRef(null);
   const [error, setError] = useState(null);
+  const [scanning, setScanning] = useState(false);
 
   const lookupBarcode = async (barcode) => {
     try {
@@ -580,67 +579,55 @@ function BarcodeScanner({ onDetected, onClose }) {
 
   useEffect(() => {
     let stopped = false;
-    const start = async () => {
+
+    const startScanner = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } }
+        const { BrowserMultiFormatReader } = await import("@zxing/browser");
+        const reader = new BrowserMultiFormatReader();
+        readerRef.current = reader;
+
+        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+        // Prefer back camera
+        const backCam = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
+        const deviceId = backCam?.deviceId;
+
+        if (stopped) return;
+        setScanning(true);
+
+        await reader.decodeFromVideoDevice(deviceId, videoRef.current, async (result, err) => {
+          if (stopped) return;
+          if (result) {
+            stopped = true;
+            reader.reset();
+            const barcode = result.getText();
+            const product = await lookupBarcode(barcode);
+            onDetected(product, barcode);
+          }
         });
-        if (stopped) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-          setScanning(true);
-        }
-      } catch(e) {
-        setError("No se puede acceder a la cámara. Acepta el permiso cuando el navegador lo pida.");
+      } catch (e) {
+        if (!stopped) setError("No se puede acceder a la cámara. Acepta el permiso cuando el navegador lo pida.");
       }
     };
-    start();
+
+    startScanner();
+
     return () => {
       stopped = true;
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (readerRef.current) { try { readerRef.current.reset(); } catch {} }
     };
   }, []);
 
-  // Scan loop using BarcodeDetector or canvas+ZXing
-  useEffect(() => {
-    if (!scanning) return;
-    let active = true;
-    let lastBarcode = null;
-
-    const scan = async () => {
-      if (!active || !videoRef.current || videoRef.current.readyState < 2) {
-        rafRef.current = requestAnimationFrame(scan);
-        return;
-      }
-      try {
-        if ("BarcodeDetector" in window) {
-          const detector = new window.BarcodeDetector({ formats: ["ean_13","ean_8","upc_a","upc_e","code_128","qr_code"] });
-          const barcodes = await detector.detect(videoRef.current);
-          if (barcodes.length > 0 && barcodes[0].rawValue !== lastBarcode) {
-            lastBarcode = barcodes[0].rawValue;
-            active = false;
-            if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-            const product = await lookupBarcode(barcodes[0].rawValue);
-            onDetected(product, barcodes[0].rawValue);
-            return;
-          }
-        }
-      } catch {}
-      if (active) rafRef.current = requestAnimationFrame(scan);
-    };
-    rafRef.current = requestAnimationFrame(scan);
-    return () => { active = false; if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [scanning]);
+  const handleClose = () => {
+    if (readerRef.current) { try { readerRef.current.reset(); } catch {} }
+    onClose();
+  };
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#000", zIndex:400, display:"flex", flexDirection:"column" }}>
       {/* Header */}
-      <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:10 }}>
+      <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:10, position:"relative" }}>
         <div style={{ color:"#fff", fontSize:16, fontWeight:700 }}>Escanear código de barras</div>
-        <button onClick={onClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:10, color:"#fff", fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+        <button onClick={handleClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:10, color:"#fff", fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
       </div>
 
       {/* Camera view */}
@@ -648,50 +635,59 @@ function BarcodeScanner({ onDetected, onClose }) {
         {error ? (
           <div style={{ textAlign:"center", padding:24 }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📷</div>
-            <div style={{ color:"#ef4444", fontSize:14, marginBottom:20 }}>{error}</div>
-            <button onClick={onClose} style={{ padding:"12px 24px", background:"#fff", border:"none", borderRadius:12, fontWeight:800, cursor:"pointer" }}>Cerrar</button>
+            <div style={{ color:"#ef4444", fontSize:14, marginBottom:20, lineHeight:1.5 }}>{error}</div>
+            <button onClick={handleClose} style={{ padding:"12px 24px", background:"#fff", border:"none", borderRadius:12, fontWeight:800, cursor:"pointer" }}>Cerrar</button>
           </div>
         ) : (
           <>
             <video ref={videoRef} playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
-            {/* Dark overlay with transparent center */}
+
+            {/* Overlay */}
             <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
-              <div style={{ position:"absolute", inset:0, background:"rgba(0,0,0,0.5)" }} />
-              {/* Scanner window */}
+              {/* Scanner box */}
               <div style={{
-                position:"absolute", top:"50%", left:"50%",
+                position:"absolute",
+                top:"50%", left:"50%",
                 transform:"translate(-50%,-60%)",
                 width:280, height:140,
-                background:"transparent",
-                boxShadow:"0 0 0 9999px rgba(0,0,0,0.55)",
-                borderRadius:8,
               }}>
                 {/* Corner markers */}
-                {[["top:0;left:0","borderTop","borderLeft"],["top:0;right:0","borderTop","borderRight"],["bottom:0;left:0","borderBottom","borderLeft"],["bottom:0;right:0","borderBottom","borderRight"]].map(([pos,b1,b2],i) => (
+                {[[0,0],[0,1],[1,0],[1,1]].map(([r,c],i) => (
                   <div key={i} style={{
                     position:"absolute",
-                    ...Object.fromEntries(pos.split(";").map(s => s.split(":").map(x=>x.trim()))),
-                    width:24, height:24,
-                    [b1]: `3px solid ${C.blue}`,
-                    [b2]: `3px solid ${C.blue}`,
-                    borderRadius: i===0?"4px 0 0 0":i===1?"0 4px 0 0":i===2?"0 0 0 4px":"0 0 4px 0",
+                    top: r===0 ? 0 : "auto",
+                    bottom: r===1 ? 0 : "auto",
+                    left: c===0 ? 0 : "auto",
+                    right: c===1 ? 0 : "auto",
+                    width:28, height:28,
+                    borderTop: r===0 ? `3px solid ${C.blue}` : "none",
+                    borderBottom: r===1 ? `3px solid ${C.blue}` : "none",
+                    borderLeft: c===0 ? `3px solid ${C.blue}` : "none",
+                    borderRight: c===1 ? `3px solid ${C.blue}` : "none",
+                    borderRadius: i===0?"4px 0 0 0": i===1?"0 4px 0 0": i===2?"0 0 0 4px":"0 0 4px 0",
                   }} />
                 ))}
-                {/* Scanning line animation */}
+                {/* Scan line */}
                 <div style={{
-                  position:"absolute", left:0, right:0, height:2,
+                  position:"absolute", left:4, right:4, height:2,
                   background:`linear-gradient(90deg, transparent, ${C.blue}, transparent)`,
-                  animation:"scanline 1.5s ease-in-out infinite",
+                  boxShadow:`0 0 8px ${C.blue}`,
+                  animation:"scanline 1.8s ease-in-out infinite",
                 }} />
+                {/* Dark sides */}
+                <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 9999px rgba(0,0,0,0.6)" }} />
               </div>
             </div>
-            <div style={{ position:"absolute", bottom:40, left:0, right:0, textAlign:"center" }}>
-              <div style={{ color:"rgba(255,255,255,0.8)", fontSize:13 }}>Centra el código de barras en el recuadro</div>
+
+            <div style={{ position:"absolute", bottom:50, left:0, right:0, textAlign:"center" }}>
+              <div style={{ color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:500 }}>
+                {scanning ? "Centra el código en el recuadro" : "Iniciando cámara..."}
+              </div>
             </div>
           </>
         )}
       </div>
-      <style>{`@keyframes scanline { 0%{top:0} 50%{top:calc(100% - 2px)} 100%{top:0} }`}</style>
+      <style>{`@keyframes scanline { 0%{top:4px} 50%{top:calc(100% - 6px)} 100%{top:4px} }`}</style>
     </div>
   );
 }
