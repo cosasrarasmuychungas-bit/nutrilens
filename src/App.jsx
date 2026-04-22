@@ -121,10 +121,10 @@ async function getRecommendations(apiKey, meals, remainingSlots, totals, goals) 
   const eaten = meals.map(m => `${m.slot}: ${m.totalCalorias} kcal`).join(", ");
   return callClaude(apiKey,
     `Eres nutricionista experto. Responde SOLO con JSON válido en una línea, sin backticks.
-Formato: {"comidas":[{"comida":"nombre","opciones":[{"sugerencia":"plato","calorias":número,"emoji":"🍗"},{"sugerencia":"...","calorias":número,"emoji":"🥗"},{"sugerencia":"...","calorias":número,"emoji":"🍜"}]}],"consejo":"frase corta"}
-Adapta al contexto: pre-entreno=rápido sin cocinar, post-entreno=proteína, merienda=ligero, comida/cena=plato completo. Da 3 opciones por comida.`,
+Formato: {"comidas":[{"comida":"nombre","opciones":[{"sugerencia":"nombre del plato","cantidad":"gramos exactos de cada ingrediente ej: 150g pechuga + 80g arroz cocido","calorias":número,"emoji":"🍗"},{"sugerencia":"...","cantidad":"...","calorias":número,"emoji":"🥗"},{"sugerencia":"...","cantidad":"...","calorias":número,"emoji":"🍜"}]}],"consejo":"frase corta"}
+IMPORTANTE: "cantidad" debe tener los gramos exactos de cada ingrediente para no pasarse de calorías. Las calorías deben corresponder exactamente a esas cantidades. Adapta al contexto: pre-entreno=rápido sin cocinar, post-entreno=proteína, merienda=ligero, comida/cena=plato completo. Da 3 opciones por comida.`,
     `Comido: ${eaten||"nada"} (${Math.round(totals.cal)} kcal de ${goals.calorias}). Faltan: ${remainingSlots.join(", ")}. Macros consumidos P${Math.round(totals.p)}g C${Math.round(totals.c)}g G${Math.round(totals.g)}g. Objetivos P${goals.proteinas}g C${goals.carbohidratos}g G${goals.grasas}g.`,
-    1000);
+    1200);
 }
 
 async function analyzeHealthScore(apiKey, base64) {
@@ -388,9 +388,12 @@ function RecGroup({ grupo }) {
     <div style={{ marginBottom:20 }}>
       <span style={S.label}>{grupo.comida}</span>
       {(grupo.opciones||[]).map((op,i) => (
-        <div key={i} style={{ ...S.card, display:"flex", alignItems:"center", gap:14, marginBottom:8 }}>
-          <div style={{ fontSize:30, width:40, textAlign:"center", flexShrink:0 }}>{op.emoji||"🍽️"}</div>
-          <div style={{ flex:1 }}><div style={{ fontSize:15, fontWeight:700 }}>{op.sugerencia}</div></div>
+        <div key={i} style={{ ...S.card, display:"flex", alignItems:"flex-start", gap:14, marginBottom:8 }}>
+          <div style={{ fontSize:30, width:40, textAlign:"center", flexShrink:0, marginTop:2 }}>{op.emoji||"🍽️"}</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>{op.sugerencia}</div>
+            {op.cantidad && <div style={{ fontSize:12, color:C.text3, lineHeight:1.4 }}>{op.cantidad}</div>}
+          </div>
           <div style={{ textAlign:"right", flexShrink:0 }}>
             <div style={{ fontSize:18, fontWeight:900, color:C.green }}>{op.calorias}</div>
             <div style={{ fontSize:10, color:C.text3 }}>kcal</div>
