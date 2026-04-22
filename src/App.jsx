@@ -474,17 +474,34 @@ function Settings({ goals, setGoals, slots, setSlots, onClose, onResetKey }) {
         </div>
 
         <span style={S.label}>Objetivos diarios</span>
-        <div style={{ ...S.card, marginBottom:24 }}>
+        <div style={{ ...S.card, marginBottom:8 }}>
           {[["calorias","Calorías","kcal",C.orange],["proteinas","Proteínas","g",C.blue],["carbohidratos","Carbohidratos","g",C.amber],["grasas","Grasas","g",C.pink]].map(([key,label,unit,color],i,arr) => (
             <div key={key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingBottom:i<arr.length-1?14:0, marginBottom:i<arr.length-1?14:0, borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none" }}>
               <span style={{ fontSize:14, color:C.text2 }}>{label}</span>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <input type="number" value={lg[key]} onChange={e=>setLg(p=>({...p,[key]:parseInt(e.target.value)||0}))}
+                <input type="number" value={lg[key]} onChange={e => {
+                  const val = parseInt(e.target.value)||0;
+                  if (key === "calorias") {
+                    // Auto-recalculate macros: 30% protein, 40% carbs, 30% fat
+                    setLg(p => ({
+                      ...p,
+                      calorias: val,
+                      proteinas: Math.round(val * 0.30 / 4),
+                      carbohidratos: Math.round(val * 0.40 / 4),
+                      grasas: Math.round(val * 0.30 / 9),
+                    }));
+                  } else {
+                    setLg(p => ({...p, [key]: val}));
+                  }
+                }}
                   style={{ width:80, background:C.surface2, border:`1px solid ${color}44`, borderRadius:8, padding:"7px 10px", color, fontSize:15, fontWeight:700, outline:"none", textAlign:"right" }} />
                 <span style={{ fontSize:12, color:C.text3, width:24 }}>{unit}</span>
               </div>
             </div>
           ))}
+        </div>
+        <div style={{ fontSize:11, color:C.text3, marginBottom:20, paddingLeft:4 }}>
+          Al cambiar las calorías los macros se recalculan automáticamente (30% proteínas, 40% carbos, 30% grasas). Puedes ajustarlos manualmente después.
         </div>
 
         <span style={S.label}>Comidas del día</span>
@@ -536,11 +553,63 @@ function HealthScorePanel({ onClose, apiKey }) {
   const [result, setResult] = useState(null);
   const [preview, setPreview] = useState(null);
   const [errMsg, setErrMsg] = useState(null);
-  const camRef  = useRef();
-  const fileRef = useRef();
+  const [barcodeResult, setBarcodeResult] = useState(null);
+  const camRef     = useRef();
+  const fileRef    = useRef();
+  const barcodeRef = useRef();
 
   const scoreColor = (n) => n>=75?C.green:n>=50?C.yellow:n>=30?C.orange:C.red;
   const macroColor = (v) => v==="bajo"?C.green:v==="medio"?C.yellow:C.red;
+
+  const scanBarcode = async (file) => {
+    if (!file) return;
+    setPhase("analyzing");
+    setErrMsg(null);
+    try {
+      // Try BarcodeDetector API first (Chrome/Android)
+      let barcode = null;
+      if ("BarcodeDetector" in window) {
+        const bitmap = await createImageBitmap(file);
+        const detector = new window.BarcodeDetector({ formats: ["ean_13","ean_8","upc_a","upc_e","code_128"] });
+        const barcodes = await detector.detect(bitmap);
+        if (barcodes.length > 0) barcode = barcodes[0].rawValue;
+      }
+      if (!barcode) {
+        // Fallback: read barcode from image via QuaggaJS or ZXing — use canvas approach
+        setErrMsg("No se detectó el código de barras. Asegúrate de que está bien enfocado e inténtalo de nuevo.");
+        setPhase("error");
+        return;
+      }
+      // Query Open Food Facts API
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+      const data = await res.json();
+      if (data.status !== 1 || !data.product) {
+        setErrMsg("Producto no encontrado en la base de datos. Prueba a añadirlo manualmente.");
+        setPhase("error");
+        return;
+      }
+      const p = data.product;
+      const n = p.nutriments || {};
+      const per100 = {
+        nombre: p.product_name || p.product_name_es || "Producto",
+        marca: p.brands || "",
+        imagen: p.image_url || null,
+        calorias100: Math.round(n["energy-kcal_100g"] || n["energy-kcal"] || 0),
+        proteinas100: Math.round((n.proteins_100g || 0) * 10) / 10,
+        carbohidratos100: Math.round((n.carbohydrates_100g || 0) * 10) / 10,
+        grasas100: Math.round((n.fat_100g || 0) * 10) / 10,
+        azucares100: Math.round((n.sugars_100g || 0) * 10) / 10,
+        fibra100: Math.round((n.fiber_100g || 0) * 10) / 10,
+        sal100: Math.round((n.salt_100g || 0) * 100) / 100,
+        barcode,
+      };
+      setBarcodeResult(per100);
+      setPhase("barcode");
+    } catch(e) {
+      setErrMsg("Error al escanear. Comprueba tu conexión e inténtalo de nuevo.");
+      setPhase("error");
+    }
+  };
 
   const process = async (file) => {
     if (!file) return;
@@ -594,10 +663,11 @@ function HealthScorePanel({ onClose, apiKey }) {
           <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:24, textAlign:"center" }}>
             <input ref={camRef}  type="file" accept="image/*" capture="environment" onChange={e=>process(e.target.files[0])} style={{ display:"none" }} />
             <input ref={fileRef} type="file" accept="image/*" onChange={e=>process(e.target.files[0])} style={{ display:"none" }} />
+            <input ref={barcodeRef} type="file" accept="image/*" capture="environment" onChange={e=>scanBarcode(e.target.files[0])} style={{ display:"none" }} />
             <div style={{ fontSize:48, marginBottom:16 }}>🥗</div>
             <div style={{ fontSize:16, fontWeight:700, marginBottom:8 }}>Analiza cualquier comida</div>
             <div style={{ fontSize:13, color:C.text2, marginBottom:24, lineHeight:1.6 }}>Puntuación del 1 al 100 según ingredientes, macros, azúcares y calidad nutricional.</div>
-            <div style={{ display:"flex", gap:10 }}>
+            <div style={{ display:"flex", gap:10, marginBottom:10 }}>
               <button onClick={() => camRef.current?.click()} style={{ flex:1, padding:"14px 8px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:14, color:C.text, fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:8 }}>
                 <span style={{ fontSize:28 }}>📷</span><span>Cámara</span>
               </button>
@@ -605,6 +675,40 @@ function HealthScorePanel({ onClose, apiKey }) {
                 <span style={{ fontSize:28 }}>🖼️</span><span>Galería</span>
               </button>
             </div>
+            <button onClick={() => barcodeRef.current?.click()} style={{ width:"100%", padding:"14px 8px", background:C.surface2, border:`1px solid ${C.blue}44`, borderRadius:14, color:C.text, fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+              <span style={{ fontSize:24 }}>📦</span><span>Escanear código de barras</span>
+            </button>
+            <div style={{ fontSize:11, color:C.text3, marginTop:10 }}>Escanea el código de barras de un producto para ver sus valores nutricionales exactos</div>
+          </div>
+        )}
+
+        {phase==="barcode" && barcodeResult && (
+          <div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:20, marginBottom:12 }}>
+              {barcodeResult.imagen && <img src={barcodeResult.imagen} alt="" style={{ width:80, height:80, objectFit:"contain", borderRadius:10, marginBottom:12, display:"block", margin:"0 auto 12px" }} />}
+              <div style={{ fontSize:11, color:C.text3, marginBottom:4 }}>{barcodeResult.marca}</div>
+              <div style={{ fontSize:20, fontWeight:900, marginBottom:16 }}>{barcodeResult.nombre}</div>
+              <div style={{ fontSize:11, color:C.text3, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Valores por 100g</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                {[
+                  ["🔥 Calorías", barcodeResult.calorias100, "kcal", C.orange],
+                  ["💪 Proteínas", barcodeResult.proteinas100, "g", C.blue],
+                  ["🌾 Carbohidratos", barcodeResult.carbohidratos100, "g", C.amber],
+                  ["🫒 Grasas", barcodeResult.grasas100, "g", C.pink],
+                  ["🍬 Azúcares", barcodeResult.azucares100, "g", C.yellow],
+                  ["🌿 Fibra", barcodeResult.fibra100, "g", C.green],
+                ].map(([label, val, unit, color]) => (
+                  <div key={label} style={{ background:C.surface2, borderRadius:12, padding:"12px 14px" }}>
+                    <div style={{ fontSize:11, color:C.text3, marginBottom:4 }}>{label}</div>
+                    <div style={{ fontSize:18, fontWeight:900, color }}>{val}<span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>{unit}</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => { setPhase("idle"); setBarcodeResult(null); }}
+              style={{ width:"100%", padding:"13px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, color:C.text2, fontWeight:700, fontSize:14, cursor:"pointer" }}>
+              Escanear otro producto
+            </button>
           </div>
         )}
 
