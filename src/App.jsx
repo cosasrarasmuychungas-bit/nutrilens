@@ -17,8 +17,8 @@ const C = {
   bg:"#000000", surface:"#0f0f0f", surface2:"#181818",
   border:"#222222", border2:"#2a2a2a",
   text:"#ffffff", text2:"#999999", text3:"#555555",
-  green:"#22c55e", yellow:"#eab308", orange:"#f97316",
-  red:"#ef4444", blue:"#3b82f6", amber:"#f59e0b", pink:"#ec4899",
+  green:"#4A90D9", yellow:"#eab308", orange:"#f97316",
+  red:"#ef4444", blue:"#4A90D9", amber:"#f59e0b", pink:"#ec4899",
 };
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -99,13 +99,22 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
 // ── Food analysis ─────────────────────────────────────────────
 async function analyzeFood(apiKey, text, base64, mediaType) {
   const userContent = base64
-    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida." }]
+    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con mucho detalle." }]
     : [{ type:"text", text:`Analiza esta comida: ${text}` }];
   return callClaude(apiKey,
-    `Analiza la comida y responde SOLO con JSON válido en una sola línea, sin backticks.
-Formato: {"platos":[{"nombre":"Nombre (cantidad)","calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número}],"totalCalorias":número,"totalProteinas":número,"totalCarbohidratos":número,"totalGrasas":número,"descripcion":"nombre corto"}
-Si no hay comida: {"error":"No se detectó comida"}`,
-    userContent, 800);
+    `Eres un nutricionista experto con visión avanzada. Analiza la comida con MÁXIMA PRECISIÓN.
+
+REGLAS CRÍTICAS:
+- Si es una foto, examina TODOS los detalles visuales: colores, texturas, formas, tamaños
+- Identifica ingredientes REALES que ves, no asumas. Si ves jamón rosado, es jamón, no salmón
+- Estima las cantidades en gramos de forma REALISTA según el tamaño visual
+- Si hay varios ingredientes, listalos TODOS por separado
+- Las calorías deben ser precisas según las cantidades estimadas
+
+Responde SOLO con JSON válido en una sola línea, sin backticks.
+Formato: {"platos":[{"nombre":"Nombre exacto con cantidad estimada en gramos","calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número}],"totalCalorias":número,"totalProteinas":número,"totalCarbohidratos":número,"totalGrasas":número,"descripcion":"descripción corta y precisa de lo que hay"}
+Si no hay comida visible: {"error":"No se detectó comida"}`,
+    userContent, 1000);
 }
 
 async function getRecommendations(apiKey, meals, remainingSlots, totals, goals) {
@@ -990,7 +999,7 @@ export default function App() {
               </>
             ) : (
               <div style={{ textAlign:"center", padding:"40px 20px" }}>
-                <div style={{ fontSize:40 }}>🍽️</div>
+                <div style={{ fontSize:40 }}>🍌🍴</div>
                 <div style={{ marginTop:12, fontSize:14, color:C.text3 }}>Registra tu primera comida del día</div>
               </div>
             )}
