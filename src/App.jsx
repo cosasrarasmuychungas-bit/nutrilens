@@ -999,7 +999,7 @@ export default function App() {
               </>
             ) : (
               <div style={{ textAlign:"center", padding:"40px 20px" }}>
-                <div style={{ fontSize:40 }}>🍌🍴</div>
+                <img src="/icon-512.png" alt="NutriLens" style={{ width:72, height:72, borderRadius:16, objectFit:"cover" }} />
                 <div style={{ marginTop:12, fontSize:14, color:C.text3 }}>Registra tu primera comida del día</div>
               </div>
             )}
