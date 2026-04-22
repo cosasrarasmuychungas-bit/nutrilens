@@ -730,6 +730,26 @@ function HealthScorePanel({ onClose, apiKey }) {
     }
   };
 
+  const analyzeBarcodeHealth = async () => {
+    if (!barcodeResult) return;
+    setPhase("analyzing");
+    try {
+      const desc = `Producto: ${barcodeResult.nombre} ${barcodeResult.marca ? `(${barcodeResult.marca})` : ""}. Valores por 100g: ${barcodeResult.calorias100} kcal, ${barcodeResult.proteinas100}g proteínas, ${barcodeResult.carbohidratos100}g carbohidratos, ${barcodeResult.grasas100}g grasas, ${barcodeResult.azucares100}g azúcares, ${barcodeResult.fibra100}g fibra.`;
+      const data = await callClaude(apiKey,
+        `Eres nutricionista experto. Analiza este producto alimenticio basándote en sus valores nutricionales. Responde SOLO con JSON en una sola línea sin backticks.
+Formato: {"nombre":"nombre producto","puntuacion":75,"categoria":"Buena","resumen":"frase corta de por qué esa puntuación","positivos":["p1","p2"],"negativos":["n1","n2"],"macros":{"proteinas":"medio","carbohidratos":"alto","grasas":"bajo","azucares":"bajo","fibra":"medio","sodio":"bajo"},"consejo":"consejo breve"}
+Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el ratio azúcares/carbohidratos, calidad proteica, grasas saturadas y fibra.`,
+        [{ type:"text", text: desc }], 600);
+      if (data.error) { setErrMsg(data.error); setPhase("error"); return; }
+      data.puntuacion = parseInt(data.puntuacion) || 50;
+      setResult(data);
+      setPhase("result");
+    } catch(e) {
+      setErrMsg("Error al analizar. Inténtalo de nuevo.");
+      setPhase("error");
+    }
+  };
+
   const process = async (file) => {
     if (!file) return;
     const isHeic = file.type==="image/heic"||file.type==="image/heif"||(file.name||"").toLowerCase().endsWith(".heic");
@@ -825,6 +845,10 @@ function HealthScorePanel({ onClose, apiKey }) {
                 ))}
               </div>
             </div>
+            <button onClick={analyzeBarcodeHealth}
+              style={{ width:"100%", padding:"13px", background:C.text, border:"none", borderRadius:14, color:C.bg, fontWeight:800, fontSize:14, cursor:"pointer", marginBottom:10 }}>
+              🥗 Analizar puntuación de salud
+            </button>
             <button onClick={() => { setPhase("idle"); setBarcodeResult(null); }}
               style={{ width:"100%", padding:"13px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, color:C.text2, fontWeight:700, fontSize:14, cursor:"pointer" }}>
               Escanear otro producto
