@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { BrowserMultiFormatReader, NotFoundException } from "@zxing/browser";
 
 // ── Constants ─────────────────────────────────────────────────
 const DEFAULT_GOALS = { calorias: 2200, proteinas: 150, carbohidratos: 250, grasas: 70 };
@@ -551,9 +552,12 @@ function Settings({ goals, setGoals, slots, setSlots, onClose, onResetKey }) {
 // ── Live Barcode Scanner ──────────────────────────────────────
 function BarcodeScanner({ onDetected, onClose }) {
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
   const readerRef = useRef(null);
-  const [error, setError] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState(null);
+  const [status, setStatus] = useState("Iniciando cámara...");
 
   const lookupBarcode = async (barcode) => {
     try {
@@ -578,59 +582,77 @@ function BarcodeScanner({ onDetected, onClose }) {
   };
 
   useEffect(() => {
-    let stopped = false;
+    let active = true;
+    let rafId = null;
 
-    const startScanner = async () => {
+    const startCamera = async () => {
       try {
-        const { BrowserMultiFormatReader } = await import("@zxing/browser");
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        video.srcObject = stream;
+        video.setAttribute("playsinline", true);
+        await new Promise(res => { video.onloadedmetadata = res; });
+        await video.play();
+        setScanning(true);
+        setStatus("Centra el código en el recuadro");
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
         const reader = new BrowserMultiFormatReader();
         readerRef.current = reader;
 
-        const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        // Prefer back camera
-        const backCam = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
-        const deviceId = backCam?.deviceId;
-
-        if (stopped) return;
-        setScanning(true);
-
-        await reader.decodeFromVideoDevice(deviceId, videoRef.current, async (result, err) => {
-          if (stopped) return;
-          if (result) {
-            stopped = true;
-            reader.reset();
-            const barcode = result.getText();
-            const product = await lookupBarcode(barcode);
-            onDetected(product, barcode);
+        const decode = async () => {
+          if (!active || video.readyState < 2) { rafId = requestAnimationFrame(decode); return; }
+          try {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            const result = await reader.decodeFromCanvas(canvas);
+            if (result && active) {
+              active = false;
+              stream.getTracks().forEach(t => t.stop());
+              const barcode = result.getText();
+              setStatus("Buscando producto...");
+              const product = await lookupBarcode(barcode);
+              onDetected(product, barcode);
+            }
+          } catch(e) {
+            // NotFoundException is normal when no barcode in frame — keep scanning
+            if (active) rafId = requestAnimationFrame(decode);
           }
-        });
-      } catch (e) {
-        if (!stopped) setError("No se puede acceder a la cámara. Acepta el permiso cuando el navegador lo pida.");
+        };
+        rafId = requestAnimationFrame(decode);
+
+      } catch(e) {
+        if (active) setError("No se puede acceder a la cámara. Acepta el permiso cuando el navegador lo pida.");
       }
     };
 
-    startScanner();
+    startCamera();
 
     return () => {
-      stopped = true;
-      if (readerRef.current) { try { readerRef.current.reset(); } catch {} }
+      active = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
     };
   }, []);
 
   const handleClose = () => {
-    if (readerRef.current) { try { readerRef.current.reset(); } catch {} }
+    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
     onClose();
   };
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#000", zIndex:400, display:"flex", flexDirection:"column" }}>
-      {/* Header */}
-      <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:10, position:"relative" }}>
+      <div style={{ padding:"20px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center", position:"relative", zIndex:10 }}>
         <div style={{ color:"#fff", fontSize:16, fontWeight:700 }}>Escanear código de barras</div>
         <button onClick={handleClose} style={{ background:"rgba(255,255,255,0.15)", border:"none", borderRadius:10, color:"#fff", fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
       </div>
 
-      {/* Camera view */}
       <div style={{ flex:1, position:"relative", display:"flex", alignItems:"center", justifyContent:"center" }}>
         {error ? (
           <div style={{ textAlign:"center", padding:24 }}>
@@ -641,48 +663,40 @@ function BarcodeScanner({ onDetected, onClose }) {
         ) : (
           <>
             <video ref={videoRef} playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
+            <canvas ref={canvasRef} style={{ display:"none" }} />
 
             {/* Overlay */}
             <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
-              {/* Scanner box */}
               <div style={{
-                position:"absolute",
-                top:"50%", left:"50%",
+                position:"absolute", top:"50%", left:"50%",
                 transform:"translate(-50%,-60%)",
                 width:280, height:140,
               }}>
-                {/* Corner markers */}
                 {[[0,0],[0,1],[1,0],[1,1]].map(([r,c],i) => (
                   <div key={i} style={{
                     position:"absolute",
-                    top: r===0 ? 0 : "auto",
-                    bottom: r===1 ? 0 : "auto",
-                    left: c===0 ? 0 : "auto",
-                    right: c===1 ? 0 : "auto",
+                    top: r===0?0:"auto", bottom: r===1?0:"auto",
+                    left: c===0?0:"auto", right: c===1?0:"auto",
                     width:28, height:28,
-                    borderTop: r===0 ? `3px solid ${C.blue}` : "none",
-                    borderBottom: r===1 ? `3px solid ${C.blue}` : "none",
-                    borderLeft: c===0 ? `3px solid ${C.blue}` : "none",
-                    borderRight: c===1 ? `3px solid ${C.blue}` : "none",
-                    borderRadius: i===0?"4px 0 0 0": i===1?"0 4px 0 0": i===2?"0 0 0 4px":"0 0 4px 0",
+                    borderTop: r===0?`3px solid ${C.blue}`:"none",
+                    borderBottom: r===1?`3px solid ${C.blue}`:"none",
+                    borderLeft: c===0?`3px solid ${C.blue}`:"none",
+                    borderRight: c===1?`3px solid ${C.blue}`:"none",
+                    borderRadius: i===0?"4px 0 0 0":i===1?"0 4px 0 0":i===2?"0 0 0 4px":"0 0 4px 0",
                   }} />
                 ))}
-                {/* Scan line */}
                 <div style={{
                   position:"absolute", left:4, right:4, height:2,
                   background:`linear-gradient(90deg, transparent, ${C.blue}, transparent)`,
                   boxShadow:`0 0 8px ${C.blue}`,
                   animation:"scanline 1.8s ease-in-out infinite",
                 }} />
-                {/* Dark sides */}
-                <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 9999px rgba(0,0,0,0.6)" }} />
+                <div style={{ position:"absolute", inset:0, boxShadow:"0 0 0 9999px rgba(0,0,0,0.6)", borderRadius:4 }} />
               </div>
             </div>
 
             <div style={{ position:"absolute", bottom:50, left:0, right:0, textAlign:"center" }}>
-              <div style={{ color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:500 }}>
-                {scanning ? "Centra el código en el recuadro" : "Iniciando cámara..."}
-              </div>
+              <div style={{ color:"rgba(255,255,255,0.85)", fontSize:13, fontWeight:500 }}>{status}</div>
             </div>
           </>
         )}
