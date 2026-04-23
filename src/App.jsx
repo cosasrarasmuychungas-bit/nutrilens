@@ -100,21 +100,23 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
 // ── Food analysis ─────────────────────────────────────────────
 async function analyzeFood(apiKey, text, base64, mediaType) {
   const userContent = base64
-    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con mucho detalle." }]
+    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con máxima precisión." }]
     : [{ type:"text", text:`Analiza esta comida: ${text}` }];
   return callClaude(apiKey,
-    `Eres un nutricionista experto con visión avanzada. Analiza la comida con MÁXIMA PRECISIÓN.
+    `Eres nutricionista experto con visión avanzada. Analiza la comida con MÁXIMA PRECISIÓN.
 
-REGLAS CRÍTICAS:
-- Si es una foto, examina TODOS los detalles visuales: colores, texturas, formas, tamaños
-- Identifica ingredientes REALES que ves, no asumas. Si ves jamón rosado, es jamón, no salmón
-- Estima las cantidades en gramos de forma REALISTA según el tamaño visual
-- Si hay varios ingredientes, listalos TODOS por separado
-- Las calorías deben ser precisas según las cantidades estimadas
+REGLAS CRÍTICAS PARA FOTOS:
+- Cuenta los elementos EXACTAMENTE como aparecen en la foto: si ves 3 tostadas pequeñas, ponlas como 3 tostadas pequeñas, NO como rebanadas grandes
+- Estima el tamaño REAL por contexto visual: una tostadita de espelta pequeña ≈ 15-20g, una rebanada grande ≈ 40-50g
+- Si ves fruta, cuenta las unidades exactas visibles: 6 fresas no son 10
+- Diferencia entre versiones pequeñas y grandes del mismo alimento
+- Usa gramos realistas: tortitas de arroz pequeñas ≈ 9g/ud, tostadas normales ≈ 25g, tostaditas mini ≈ 12g
+- Si hay varios ingredientes, LISTALOS TODOS por separado con cantidades en gramos
+- Los colores, texturas y tamaños relativos son clave para identificar correctamente
 
 Responde SOLO con JSON válido en una sola línea, sin backticks.
-Formato: {"platos":[{"nombre":"Nombre exacto con cantidad estimada en gramos","calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número}],"totalCalorias":número,"totalProteinas":número,"totalCarbohidratos":número,"totalGrasas":número,"descripcion":"descripción corta y precisa de lo que hay"}
-Si no hay comida visible: {"error":"No se detectó comida"}`,
+Formato: {"platos":[{"nombre":"Nombre exacto con cantidad real (ej: Tostaditas espelta pequeñas x3 ~45g)","calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número}],"totalCalorias":número,"totalProteinas":número,"totalCarbohidratos":número,"totalGrasas":número,"descripcion":"descripción corta y precisa"}
+Si no hay comida: {"error":"No se detectó comida"}`,
     userContent, 1000);
 }
 
@@ -218,167 +220,103 @@ function MacroBar({ label, value, goal, color }) {
 }
 
 function MealCard({ meal, onDelete, onUpdate, apiKey, slots }) {
-  const [editing, setEditing] = useState(false);
-  const [editPlatos, setEditPlatos] = useState([]);
-  const [editSlot, setEditSlot] = useState(null);
-  const [recalculating, setRecalculating] = useState(false);
-  const [editingDesc, setEditingDesc] = useState(false);
-  const [newDesc, setNewDesc] = useState("");
-  const [recalcDesc, setRecalcDesc] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMsg, setChatMsg] = useState("");
+  const [correcting, setCorrecting] = useState(false);
+  const [slotOpen, setSlotOpen] = useState(false);
 
-  const openEdit = () => {
-    setEditPlatos((meal.platos||[]).map(p=>({...p})));
-    setEditSlot({ label: meal.slot, emoji: meal.slotEmoji });
-    setEditing(true);
-  };
-
-  const recalcFromDesc = async () => {
-    if (!newDesc.trim()) return;
-    setRecalcDesc(true);
+  const correct = async () => {
+    if (!chatMsg.trim()) return;
+    setCorrecting(true);
     try {
-      const result = await analyzeFood(apiKey, newDesc.trim(), null, null);
-      if (!result.error && result.platos?.length > 0) {
-        onUpdate({
-          ...meal,
-          platos: result.platos,
-          totalCalorias: result.totalCalorias || 0,
-          totalProteinas: result.totalProteinas || 0,
-          totalCarbohidratos: result.totalCarbohidratos || 0,
-          totalGrasas: result.totalGrasas || 0,
-          descripcion: newDesc.trim(),
-        });
-        setEditingDesc(false);
-        setNewDesc("");
+      const context = `Comida registrada: ${meal.descripcion}. Ingredientes: ${(meal.platos||[]).map(p=>`${p.nombre} (${p.calorias}kcal)`).join(", ")}.`;
+      const result = await callClaude(apiKey,
+        `Eres nutricionista. El usuario quiere corregir una comida ya registrada. Aplica su corrección y devuelve los datos actualizados.
+Responde SOLO con JSON válido en una línea sin backticks.
+Formato: {"platos":[{"nombre":"Nombre con cantidad","calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número}],"totalCalorias":número,"totalProteinas":número,"totalCarbohidratos":número,"totalGrasas":número,"descripcion":"descripción corta actualizada"}`,
+        [{ type:"text", text:`${context}\n\nCorrección del usuario: ${chatMsg.trim()}` }], 800);
+      if (!result.error && result.platos) {
+        onUpdate({ ...meal, ...result, totalCalorias: result.totalCalorias||0, totalProteinas: result.totalProteinas||0, totalCarbohidratos: result.totalCarbohidratos||0, totalGrasas: result.totalGrasas||0 });
+        setChatOpen(false);
+        setChatMsg("");
       }
     } catch {}
-    finally { setRecalcDesc(false); }
-  };
-
-  const save = (platos = editPlatos) => {
-    const totalCalorias      = platos.reduce((s,p) => s+(parseFloat(p.calorias)||0), 0);
-    const totalProteinas     = platos.reduce((s,p) => s+(parseFloat(p.proteinas)||0), 0);
-    const totalCarbohidratos = platos.reduce((s,p) => s+(parseFloat(p.carbohidratos)||0), 0);
-    const totalGrasas        = platos.reduce((s,p) => s+(parseFloat(p.grasas)||0), 0);
-    onUpdate({ ...meal, platos, totalCalorias:Math.round(totalCalorias), totalProteinas:Math.round(totalProteinas), totalCarbohidratos:Math.round(totalCarbohidratos), totalGrasas:Math.round(totalGrasas), slot: editSlot?.label || meal.slot, slotEmoji: editSlot?.emoji || meal.slotEmoji });
-    setEditing(false);
-  };
-
-  const recalculate = async () => {
-    setRecalculating(true);
-    try {
-      const desc = editPlatos.map(p=>p.nombre).filter(Boolean).join(", ");
-      const result = await analyzeFood(apiKey, desc, null, null);
-      if (!result.error && result.platos?.length > 0) {
-        const merged = editPlatos.map((ep,i) => {
-          const match = result.platos[i] || result.platos[0];
-          return { nombre:ep.nombre, calorias:match.calorias, proteinas:match.proteinas, carbohidratos:match.carbohidratos, grasas:match.grasas };
-        });
-        save(merged);
-      }
-    } catch { save(editPlatos); }
-    finally { setRecalculating(false); }
+    finally { setCorrecting(false); }
   };
 
   return (
     <div style={S.card}>
       {meal.thumbnail && <img src={meal.thumbnail} alt="" style={{ width:"100%", maxHeight:200, objectFit:"cover", borderRadius:12, marginBottom:12, display:"block" }} />}
+
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-        <span style={{ fontSize:11, color:C.text3, fontWeight:600 }}>{meal.slotEmoji} {meal.slot}</span>
+        <button onClick={() => onUpdate && setSlotOpen(p=>!p)}
+          style={{ fontSize:11, color:C.text3, fontWeight:600, background:"none", border:"none", cursor:onUpdate?"pointer":"default", padding:0 }}>
+          {meal.slotEmoji} {meal.slot} {onUpdate && "▾"}
+        </button>
         <div style={{ display:"flex", gap:8 }}>
-          {onUpdate && !editing && <button onClick={openEdit} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:12, fontWeight:600 }}>✏️ editar</button>}
-          {onUpdate && editing && <button onClick={() => setEditing(false)} style={{ background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:6, cursor:"pointer", color:C.text2, fontSize:12, fontWeight:600, padding:"2px 8px" }}>cancelar</button>}
+          {onUpdate && <button onClick={() => { setChatOpen(p=>!p); setChatMsg(""); }} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:12, fontWeight:600 }}>✏️ corregir</button>}
           {onDelete && <button onClick={onDelete} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:18, lineHeight:1 }}>×</button>}
         </div>
       </div>
-      {editing ? (
-        <div>
-          <div style={{ fontSize:11, color:C.text3, marginBottom:8, textTransform:"uppercase", letterSpacing:1 }}>¿A qué comida mover?</div>
-          <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
-            {(slots||[]).map(sl => (
-              <button key={sl.id} onClick={() => setEditSlot(sl)}
-                style={{ padding:"5px 12px", borderRadius:100, border:"none", cursor:"pointer", background: editSlot?.label===sl.label ? C.text : C.surface2, color: editSlot?.label===sl.label ? C.bg : C.text2, fontSize:12, fontWeight:700 }}>
-                {sl.emoji} {sl.label}
-              </button>
-            ))}
-          </div>
-          <div style={{ fontSize:11, color:C.text3, marginBottom:10, textTransform:"uppercase", letterSpacing:1 }}>Edita las cantidades y pulsa Recalcular</div>
-          {editPlatos.map((plato,i) => (
-            <div key={i} style={{ background:C.surface2, borderRadius:12, padding:12, marginBottom:8 }}>
-              <input value={plato.nombre} onChange={e => setEditPlatos(p=>p.map((x,j)=>j===i?{...x,nombre:e.target.value}:x))}
-                style={{ ...S.inp, marginBottom:8, fontSize:13, fontWeight:600, background:C.surface }} placeholder="Nombre y cantidad (ej: Pasta 150g)" />
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:6 }}>
-                {[["calorias","kcal",C.orange],["proteinas","P",C.blue],["carbohidratos","C",C.amber],["grasas","G",C.pink]].map(([key,unit,color]) => (
-                  <div key={key}>
-                    <div style={{ fontSize:9, color:C.text3, marginBottom:3, textAlign:"center" }}>{unit}</div>
-                    <input type="number" value={plato[key]||0}
-                      onChange={e => setEditPlatos(p=>p.map((x,j)=>j===i?{...x,[key]:e.target.value}:x))}
-                      style={{ ...S.inp, color, fontWeight:700, textAlign:"center", padding:"6px 4px", fontSize:13, background:C.surface }} />
-                  </div>
-                ))}
-              </div>
+
+      {/* Slot selector */}
+      {slotOpen && (
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
+          {(slots||[]).map(sl => (
+            <button key={sl.id} onClick={() => { onUpdate({ ...meal, slot:sl.label, slotEmoji:sl.emoji }); setSlotOpen(false); }}
+              style={{ padding:"5px 12px", borderRadius:100, border:"none", cursor:"pointer", background: meal.slot===sl.label ? C.text : C.surface2, color: meal.slot===sl.label ? C.bg : C.text2, fontSize:12, fontWeight:700 }}>
+              {sl.emoji} {sl.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ fontSize:14, color:C.text2, marginBottom:10, lineHeight:1.3 }}>{meal.descripcion}</div>
+
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ display:"flex", gap:6 }}>
+          {[["P",meal.totalProteinas||0,C.blue],["C",meal.totalCarbohidratos||0,C.amber],["G",meal.totalGrasas||0,C.pink]].map(([l,v,col]) => (
+            <div key={l} style={{ padding:"4px 10px", background:C.surface2, borderRadius:8, textAlign:"center" }}>
+              <div style={{ fontSize:12, fontWeight:700, color:col }}>{Math.round(v)}g</div>
+              <div style={{ fontSize:9, color:C.text3 }}>{l}</div>
             </div>
           ))}
-          <div style={{ display:"flex", gap:8, marginTop:4 }}>
-            <button onClick={recalculate} disabled={recalculating}
-              style={{ flex:1, padding:"11px", background:recalculating?C.surface2:C.surface, border:`1px solid ${C.border2}`, borderRadius:10, color:recalculating?C.text3:C.text2, fontWeight:700, fontSize:13, cursor:recalculating?"default":"pointer" }}>
-              {recalculating ? "⏳ Calculando..." : "🔄 Recalcular con IA"}
+        </div>
+        <div><span style={{ fontSize:20, fontWeight:900 }}>{meal.totalCalorias}</span><span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>kcal</span></div>
+      </div>
+
+      {meal.platos?.length > 0 && (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+          {meal.platos.map((p,i) => (
+            <div key={i} style={{ fontSize:12, display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+              <span style={{ color:C.text2 }}>{p.nombre}</span><span style={{ color:C.text3 }}>{p.calorias} kcal</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Chat correction box */}
+      {chatOpen && (
+        <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
+          <div style={{ fontSize:11, color:C.text3, marginBottom:8 }}>Dile a la IA qué corregir — cantidad, ingrediente, franja horaria…</div>
+          <textarea
+            value={chatMsg}
+            onChange={e => setChatMsg(e.target.value)}
+            placeholder="Ej: eran tostaditas pequeñas de espelta, solo 3, y las fresas eran 6 no 10"
+            style={{ ...S.inp, resize:"none", minHeight:72, lineHeight:1.5, fontSize:13, marginBottom:8 }}
+            onKeyDown={e => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); correct(); } }}
+          />
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={() => { setChatOpen(false); setChatMsg(""); }}
+              style={{ flex:1, padding:"10px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:10, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+              Cancelar
             </button>
-            <button onClick={() => save()} style={{ flex:1, padding:"11px", background:C.text, border:"none", borderRadius:10, color:C.bg, fontWeight:800, fontSize:13, cursor:"pointer" }}>
-              ✓ Guardar
+            <button onClick={correct} disabled={correcting || !chatMsg.trim()}
+              style={{ flex:2, padding:"10px", background: correcting||!chatMsg.trim() ? C.surface2 : C.text, border:"none", borderRadius:10, color: correcting||!chatMsg.trim() ? C.text3 : C.bg, fontWeight:800, fontSize:13, cursor: correcting||!chatMsg.trim() ? "default" : "pointer" }}>
+              {correcting ? "⏳ Corrigiendo..." : "✓ Corregir"}
             </button>
           </div>
         </div>
-      ) : (
-        <>
-          <div style={{ fontSize:14, color:C.text2, marginBottom:10, lineHeight:1.3 }}>{meal.descripcion}</div>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <div style={{ display:"flex", gap:6 }}>
-              {[["P",meal.totalProteinas||0,C.blue],["C",meal.totalCarbohidratos||0,C.amber],["G",meal.totalGrasas||0,C.pink]].map(([l,v,col]) => (
-                <div key={l} style={{ padding:"4px 10px", background:C.surface2, borderRadius:8, textAlign:"center" }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:col }}>{Math.round(v)}g</div>
-                  <div style={{ fontSize:9, color:C.text3 }}>{l}</div>
-                </div>
-              ))}
-            </div>
-            <div><span style={{ fontSize:20, fontWeight:900 }}>{meal.totalCalorias}</span><span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>kcal</span></div>
-          </div>
-          {meal.platos?.length > 0 && (
-            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
-              {meal.platos.map((p,i) => (
-                <div key={i} style={{ fontSize:12, display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                  <span style={{ color:C.text2 }}>{p.nombre}</span><span style={{ color:C.text3 }}>{p.calorias} kcal</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {onUpdate && (
-            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
-              {!editingDesc ? (
-                <button onClick={() => { setEditingDesc(true); setNewDesc(meal.descripcion||""); }}
-                  style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:12, fontWeight:600, padding:0 }}>
-                  ➕ Añadir ingredientes y recalcular
-                </button>
-              ) : (
-                <div>
-                  <div style={{ fontSize:11, color:C.text3, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Describe la comida completa</div>
-                  <textarea value={newDesc} onChange={e=>setNewDesc(e.target.value)}
-                    placeholder="Ej: patatas fritas con salsa brava y alioli"
-                    style={{ ...S.inp, resize:"vertical", minHeight:70, lineHeight:1.5, fontSize:13, marginBottom:8 }} />
-                  <div style={{ display:"flex", gap:8 }}>
-                    <button onClick={() => { setEditingDesc(false); setNewDesc(""); }}
-                      style={{ flex:1, padding:"9px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:10, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>
-                      Cancelar
-                    </button>
-                    <button onClick={recalcFromDesc} disabled={recalcDesc || !newDesc.trim()}
-                      style={{ flex:2, padding:"9px", background:recalcDesc||!newDesc.trim()?C.surface2:C.text, border:"none", borderRadius:10, color:recalcDesc||!newDesc.trim()?C.text3:C.bg, fontWeight:800, fontSize:13, cursor:recalcDesc||!newDesc.trim()?"default":"pointer" }}>
-                      {recalcDesc ? "⏳ Calculando..." : "🔄 Recalcular calorías"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </>
       )}
     </div>
   );
