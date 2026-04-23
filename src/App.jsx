@@ -25,12 +25,58 @@ const C = {
 const today = () => new Date().toISOString().split("T")[0];
 const ringColor = (pct) => pct < 50 ? C.green : pct < 80 ? C.yellow : pct < 100 ? C.orange : C.red;
 
-const S = {
-  pill: (on) => ({ padding:"7px 14px", borderRadius:100, border:"none", cursor:"pointer", background: on ? C.text : C.surface2, color: on ? C.bg : C.text2, fontSize:12, fontWeight:700, transition:"all 0.15s" }),
-  card: { background:C.surface, borderRadius:16, padding:"16px", border:`1px solid ${C.border}`, marginBottom:10 },
-  label: { fontSize:10, color:C.text3, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5, marginBottom:8, display:"block" },
-  inp: { background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:10, padding:"10px 14px", color:C.text, fontSize:14, outline:"none", fontFamily:"inherit", width:"100%", boxSizing:"border-box" },
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 6)  return "Buenas noches";
+  if (h < 13) return "Buenos días";
+  if (h < 20) return "Buenas tardes";
+  return "Buenas noches";
 };
+
+const getDateStr = () => {
+  const d = new Date();
+  const days = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const months = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return `${days[d.getDay()]} ${d.getDate()} de ${months[d.getMonth()]}`;
+};
+
+const S = {
+  pill: (on) => ({ padding:"7px 16px", borderRadius:100, border:`1px solid ${on ? C.blue+"66" : C.border}`, cursor:"pointer", background: on ? C.blue+"22" : C.surface2, color: on ? C.blue : C.text2, fontSize:12, fontWeight:700, transition:"all 0.15s" }),
+  card: { background:C.surface, borderRadius:18, padding:"16px", border:`1px solid ${C.border}`, marginBottom:10 },
+  label: { fontSize:10, color:C.text3, fontWeight:700, textTransform:"uppercase", letterSpacing:2, marginBottom:10, display:"block" },
+  inp: { background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, padding:"11px 14px", color:C.text, fontSize:14, outline:"none", fontFamily:"inherit", width:"100%", boxSizing:"border-box" },
+};
+
+// ── Splash Screen ─────────────────────────────────────────────
+function SplashScreen({ onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2200);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:0 }}>
+      <div style={{ animation:"splashLogo 1.8s ease forwards" }}>
+        <img src="/icon-512.png" alt="NutriLens" style={{ width:120, height:120, borderRadius:28, display:"block" }} />
+      </div>
+      <div style={{ animation:"splashText 1.8s ease forwards", marginTop:20, textAlign:"center" }}>
+        <div style={{ fontSize:28, fontWeight:900, letterSpacing:-1, color:C.text }}>NutriLens</div>
+        <div style={{ fontSize:13, color:C.blue, fontWeight:600, marginTop:4, letterSpacing:2, textTransform:"uppercase" }}>IA</div>
+      </div>
+      <style>{`
+        @keyframes splashLogo {
+          0%   { opacity:0; transform:scale(0.6) translateY(20px); }
+          60%  { opacity:1; transform:scale(1.05) translateY(-4px); }
+          100% { opacity:1; transform:scale(1) translateY(0); }
+        }
+        @keyframes splashText {
+          0%   { opacity:0; transform:translateY(16px); }
+          50%  { opacity:0; transform:translateY(16px); }
+          100% { opacity:1; transform:translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 // ── localStorage helpers ──────────────────────────────────────
 const ls = {
@@ -883,6 +929,7 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
 // ── Main App ──────────────────────────────────────────────────
 export default function App() {
   const [apiKey,      setApiKey]      = useState(() => ls.get("nl-apikey") || "");
+  const [splash,      setSplash]      = useState(true);
   const [meals,       setMeals]       = useState(() => {
     const h = ls.get("nl-history") || {};
     return h[today()]?.meals || [];
@@ -923,6 +970,9 @@ export default function App() {
 
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
+
+  // Show splash
+  if (splash) return <SplashScreen onDone={() => setSplash(false)} />;
 
   // Show setup screen if no API key
   if (!apiKey) return <SetupScreen onSave={saveApiKey} />;
@@ -1032,49 +1082,60 @@ export default function App() {
   const selDayTotals = selDayData ? selDayData.meals.reduce((a,m)=>({cal:a.cal+m.totalCalorias,p:a.p+(m.totalProteinas||0),c:a.c+(m.totalCarbohidratos||0),g:a.g+(m.totalGrasas||0)}),{cal:0,p:0,c:0,g:0}) : null;
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:80 }}>
+    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:80, animation:"fadeIn 0.4s ease" }}>
       {showSet    && <Settings goals={goals} setGoals={setGoals} slots={slots} setSlots={sl=>{setSlots(sl);if(!sl.find(s=>s.id===selSlot))setSelSlot(sl[0]?.id);}} onClose={()=>setShowSet(false)} onResetKey={resetApiKey} />}
       {showHealth && <HealthScorePanel onClose={()=>setShowHealth(false)} apiKey={apiKey} />}
 
       {/* HEADER */}
-      <div style={{ padding:"32px 20px 0" }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24 }}>
+      <div style={{ padding:"36px 20px 0" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
           <div>
-            <div style={{ fontSize:11, color:C.text3, fontWeight:600, letterSpacing:2, textTransform:"uppercase", marginBottom:4 }}>NutriLens IA</div>
-            <div style={{ fontSize:28, fontWeight:900, letterSpacing:-1, lineHeight:1 }}>Tu día</div>
+            <div style={{ fontSize:13, color:C.text3, fontWeight:500, marginBottom:3 }}>{getDateStr()}</div>
+            <div style={{ fontSize:26, fontWeight:900, letterSpacing:-0.5, lineHeight:1.1 }}>{getGreeting()} 👋</div>
           </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>setShowHealth(true)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, width:44, height:44, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>🥗</button>
-            <button onClick={()=>setShowSet(true)}    style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, width:44, height:44, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>⚙️</button>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={()=>setShowHealth(true)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, width:44, height:44, cursor:"pointer", fontSize:20, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>🥗</button>
+            <button onClick={()=>setShowSet(true)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, width:44, height:44, cursor:"pointer", fontSize:20, display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>⚙️</button>
           </div>
         </div>
 
-        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:20, marginBottom:6 }}>
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:22, padding:20, marginBottom:6 }}>
           <div style={{ display:"flex", alignItems:"center", gap:20, marginBottom:20 }}>
-            <div style={{ position:"relative", width:88, height:88, flexShrink:0 }}>
-              <svg width="88" height="88" viewBox="0 0 88 88">
-                <circle cx="44" cy="44" r="38" fill="none" stroke={C.surface2} strokeWidth="7"/>
-                <circle cx="44" cy="44" r="38" fill="none" stroke={rc} strokeWidth="7"
+            {/* Ring */}
+            <div style={{ position:"relative", width:90, height:90, flexShrink:0 }}>
+              <svg width="90" height="90" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="38" fill="none" stroke={C.surface2} strokeWidth="8"/>
+                <circle cx="45" cy="45" r="38" fill="none" stroke={rc} strokeWidth="8"
                   strokeDasharray={`${2*Math.PI*38}`} strokeDashoffset={`${2*Math.PI*38*(1-pct/100)}`}
-                  strokeLinecap="round" transform="rotate(-90 44 44)" style={{ transition:"stroke-dashoffset 0.6s ease, stroke 0.4s" }}/>
+                  strokeLinecap="round" transform="rotate(-90 45 45)" style={{ transition:"stroke-dashoffset 0.8s ease, stroke 0.4s" }}/>
               </svg>
-              <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <div style={{ fontSize:18, fontWeight:900, color:rc }}>{Math.round(pct)}%</div>
+              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+                <div style={{ fontSize:19, fontWeight:900, color:rc, lineHeight:1 }}>{Math.round(pct)}%</div>
+                <div style={{ fontSize:9, color:C.text3, marginTop:2 }}>del obj.</div>
               </div>
             </div>
+            {/* Numbers */}
             <div style={{ flex:1 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-                <div><div style={{ fontSize:26, fontWeight:900, lineHeight:1 }}>{Math.round(totals.cal)}</div><div style={{ fontSize:11, color:C.text3, marginTop:2 }}>consumidas</div></div>
-                <div style={{ textAlign:"right" }}><div style={{ fontSize:26, fontWeight:900, color:remaining>=0?C.green:C.red, lineHeight:1 }}>{Math.abs(Math.round(remaining))}</div><div style={{ fontSize:11, color:C.text3, marginTop:2 }}>{remaining>=0?"restantes":"excedidas"}</div></div>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
+                <div>
+                  <div style={{ fontSize:28, fontWeight:900, lineHeight:1 }}>{Math.round(totals.cal)}</div>
+                  <div style={{ fontSize:11, color:C.text3, marginTop:3 }}>kcal consumidas</div>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <div style={{ fontSize:28, fontWeight:900, color: remaining>=0?C.green:C.red, lineHeight:1 }}>{Math.abs(Math.round(remaining))}</div>
+                  <div style={{ fontSize:11, color:C.text3, marginTop:3 }}>{remaining>=0?"kcal restantes":"kcal excedidas"}</div>
+                </div>
               </div>
-              <div style={{ background:C.surface2, borderRadius:4, height:3, overflow:"hidden" }}>
-                <div style={{ width:`${pct}%`, height:"100%", background:rc, borderRadius:4, transition:"width 0.5s ease, background 0.4s" }}/>
+              {/* Thicker progress bar */}
+              <div style={{ background:C.surface2, borderRadius:6, height:8, overflow:"hidden" }}>
+                <div style={{ width:`${pct}%`, height:"100%", background:`linear-gradient(90deg, ${rc}99, ${rc})`, borderRadius:6, transition:"width 0.6s ease, background 0.4s" }}/>
               </div>
-              <div style={{ fontSize:10, color:C.text3, marginTop:5, textAlign:"center" }}>objetivo {goals.calorias} kcal</div>
+              <div style={{ fontSize:10, color:C.text3, marginTop:5 }}>objetivo {goals.calorias} kcal</div>
             </div>
           </div>
-          <div style={{ display:"flex", gap:16, paddingTop:16, borderTop:`1px solid ${C.border}` }}>
-            <MacroBar label="Prot."  value={totals.p} goal={goals.proteinas}     color={C.blue}  />
+          {/* Macro bars */}
+          <div style={{ display:"flex", gap:14, paddingTop:16, borderTop:`1px solid ${C.border}` }}>
+            <MacroBar label="Proteínas"  value={totals.p} goal={goals.proteinas}     color={C.blue}  />
             <MacroBar label="Carbos" value={totals.c} goal={goals.carbohidratos} color={C.amber} />
             <MacroBar label="Grasas" value={totals.g} goal={goals.grasas}        color={C.pink}  />
           </div>
@@ -1082,9 +1143,19 @@ export default function App() {
       </div>
 
       {/* TABS */}
-      <div style={{ display:"flex", padding:"16px 20px 0", gap:4 }}>
-        {[["hoy","Hoy"],["calendario","📅 Historial"],["recomendaciones",`✨${recs?" ·":""}`]].map(([id,label]) => (
-          <button key={id} onClick={()=>setTab(id)} style={{ flex:1, padding:"10px 6px", background:tab===id?C.surface:"transparent", border:`1px solid ${tab===id?C.border:"transparent"}`, borderRadius:12, color:tab===id?C.text:C.text3, fontWeight:700, fontSize:12, cursor:"pointer", transition:"all 0.2s" }}>{label}</button>
+      <div style={{ display:"flex", padding:"16px 20px 0", gap:6 }}>
+        {[["hoy","🍌 Hoy"],["calendario","📅 Historial"],["recomendaciones",`✨ Plan${recs?" ·":""}`]].map(([id,label]) => (
+          <button key={id} onClick={()=>setTab(id)} style={{
+            flex:1, padding:"11px 6px",
+            background: tab===id ? C.blue+"22" : "transparent",
+            border: `1px solid ${tab===id ? C.blue+"55" : "transparent"}`,
+            borderRadius:14,
+            color: tab===id ? C.blue : C.text3,
+            fontWeight: tab===id ? 800 : 600,
+            fontSize:12,
+            cursor:"pointer",
+            transition:"all 0.2s"
+          }}>{label}</button>
         ))}
       </div>
 
@@ -1264,15 +1335,18 @@ export default function App() {
       </div>
 
       <style>{`
-        @keyframes spin { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
-        @keyframes pulse { 0%,100%{box-shadow:0 0 0 8px ${C.red}33,0 0 0 16px ${C.red}11;}50%{box-shadow:0 0 0 12px ${C.red}44,0 0 0 24px ${C.red}11;} }
+        @keyframes spin   { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
+        @keyframes pulse  { 0%,100%{box-shadow:0 0 0 8px ${C.red}33,0 0 0 16px ${C.red}11;}50%{box-shadow:0 0 0 12px ${C.red}44,0 0 0 24px ${C.red}11;} }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);} }
+        @keyframes slideUp{ from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);} }
         *{box-sizing:border-box;margin:0;padding:0;}
         html,body{background:#000000!important;}
-        textarea::placeholder{color:#444;}
-        input::placeholder{color:#444;}
+        textarea::placeholder{color:#3a3a3a;}
+        input::placeholder{color:#3a3a3a;}
         input[type=number]::-webkit-inner-spin-button{opacity:0.3;}
         ::-webkit-scrollbar{width:4px;}
         ::-webkit-scrollbar-thumb{background:#222;border-radius:4px;}
+        button:active{transform:scale(0.97);}
       `}</style>
     </div>
   );
