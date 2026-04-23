@@ -289,133 +289,240 @@ function SetupScreen({ onSave }) {
 }
 
 // ── Onboarding Flow ───────────────────────────────────────────
-const QUESTIONS = [
-  {
-    id: "objetivo",
-    q: "¿Cuál es tu objetivo principal?",
-    emoji: "🎯",
-    opts: ["Perder grasa corporal", "Ganar músculo", "Mantener peso actual", "Mejorar salud general"],
-  },
-  {
-    id: "ritmo",
-    q: "¿A qué ritmo quieres avanzar?",
-    emoji: "⚡",
-    opts: ["Suave (0,25 kg/semana)", "Moderado (0,5 kg/semana)", "Rápido (1 kg/semana)", "Lo antes posible"],
-  },
-  {
-    id: "actividad",
-    q: "¿Cuál es tu nivel de actividad física?",
-    emoji: "🏃",
-    opts: ["Sedentario (escritorio, poco ejercicio)", "Algo activo (1-2 días/semana)", "Moderado (3-4 días/semana)", "Muy activo (5+ días/semana)"],
-  },
-  {
-    id: "dieta",
-    q: "¿Qué tipo de dieta prefieres?",
-    emoji: "🥗",
-    opts: ["Sin restricciones (todo)", "Alta en proteína", "Bajo en carbohidratos", "Mediterránea / saludable"],
-  },
-  {
-    id: "restricciones",
-    q: "¿Tienes alguna restricción alimentaria?",
-    emoji: "🚫",
-    opts: ["Ninguna", "Vegetariano", "Sin gluten", "Sin lactosa"],
-  },
+const OB_STEPS = [
+  { id:"nombre",       emoji:"👋", q:"¿Cómo te llamas?",                      type:"text",   placeholder:"Tu nombre...",         hint:"Para personalizar tu experiencia" },
+  { id:"sexo",         emoji:"🧬", q:"¿Cuál es tu sexo biológico?",            type:"single", opts:["Hombre","Mujer"],             hint:"Afecta al cálculo del metabolismo" },
+  { id:"edad",         emoji:"🎂", q:"¿Cuántos años tienes?",                  type:"number", placeholder:"Ej: 25",               hint:"Determina tu tasa metabólica basal", unit:"años" },
+  { id:"altura",       emoji:"📏", q:"¿Cuánto mides?",                         type:"number", placeholder:"Ej: 175",              hint:"Necesario para calcular tu BMR", unit:"cm" },
+  { id:"peso",         emoji:"⚖️",  q:"¿Cuánto pesas actualmente?",            type:"number", placeholder:"Ej: 75",               hint:"Tu peso actual en kilogramos", unit:"kg" },
+  { id:"objetivo",     emoji:"🎯", q:"¿Cuál es tu objetivo principal?",        type:"single", opts:["Perder grasa corporal","Ganar músculo","Recomposición corporal","Mantener y tonificar","Mejorar salud general"], hint:"Define toda tu estrategia nutricional" },
+  { id:"ritmo",        emoji:"⚡", q:"¿A qué ritmo quieres avanzar?",          type:"single", opts:["Suave — 0,25 kg/semana","Moderado — 0,5 kg/semana","Rápido — 1 kg/semana","Agresivo — máxima velocidad"], hint:"Afecta al déficit o superávit calórico" },
+  { id:"actividad",    emoji:"🏃", q:"¿Cuál es tu nivel de actividad física?", type:"single", opts:["Sedentario (trabajo de escritorio)","Algo activo (1-2 días/sem)","Moderado (3-4 días/sem)","Muy activo (5-6 días/sem)","Atleta (entreno diario)"], hint:"Multiplicador del gasto calórico" },
+  { id:"deportes",     emoji:"🏋️", q:"¿Qué deportes o actividades practicas?", type:"multi",  opts:["Musculación / gym","Running / cardio","Ciclismo","Natación","Fútbol / deportes equipo","Yoga / pilates","HIIT / crossfit","Artes marciales"], hint:"Selecciona todos los que hagas" },
+  { id:"dieta",        emoji:"🥗", q:"¿Qué tipo de dieta prefieres?",          type:"single", opts:["Sin restricciones","Alta en proteína (>30%)","Bajo en carbohidratos / keto","Mediterránea","Flexible / IIFYM"], hint:"Adapta la distribución de macros" },
+  { id:"restricciones",emoji:"🚫", q:"¿Tienes restricciones alimentarias?",   type:"multi",  opts:["Ninguna","Vegetariano","Vegano","Sin gluten","Sin lactosa","Sin mariscos","Sin frutos secos","Halal / Kosher"], hint:"Selecciona todas las que apliquen" },
+  { id:"sueno",        emoji:"😴", q:"¿Cuántas horas duermes por noche?",      type:"single", opts:["Menos de 6h","6-7h","7-8h (ideal)","Más de 9h"], hint:"El sueño afecta directamente al metabolismo" },
+  { id:"estres",       emoji:"🧠", q:"¿Cómo describirías tu nivel de estrés?", type:"single", opts:["Bajo — vivo tranquilo","Moderado — algunos días difíciles","Alto — trabajo/vida muy exigente","Muy alto — estrés constante"], hint:"El cortisol afecta la gestión del peso" },
 ];
 
 function OnboardingFlow({ apiKey, onDone }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [custom, setCustom] = useState("");
+  const [customVal, setCustomVal] = useState("");
+  const [numVal, setNumVal] = useState("");
+  const [multiSel, setMultiSel] = useState([]);
   const [generating, setGenerating] = useState(false);
-  const [name, setName] = useState("");
+  const [genStatus, setGenStatus] = useState("");
 
-  const q = QUESTIONS[step];
-  const isLast = step === QUESTIONS.length - 1;
-  const isNameStep = step === -1;
+  const s = OB_STEPS[step];
+  const isLast = step === OB_STEPS.length - 1;
+  const progress = ((step + 1) / OB_STEPS.length) * 100;
 
-  const selectOpt = (opt) => {
-    setAnswers(p => ({ ...p, [q.id]: opt }));
-    setCustom("");
+  const canNext = () => {
+    if (s.type === "text")   return (answers[s.id]||"").trim().length > 0 || customVal.trim().length > 0;
+    if (s.type === "number") return numVal.trim().length > 0 && !isNaN(parseFloat(numVal));
+    if (s.type === "single") return !!(answers[s.id] || customVal.trim());
+    if (s.type === "multi")  return multiSel.length > 0 || customVal.trim().length > 0;
+    return false;
   };
 
-  const next = async () => {
-    const val = custom.trim() || answers[q.id];
-    if (!val && !isNameStep) return;
-    const newAnswers = { ...answers, [q.id]: val || answers[q.id] };
+  const getValue = () => {
+    if (s.type === "text")   return customVal.trim() || answers[s.id] || "";
+    if (s.type === "number") return parseFloat(numVal);
+    if (s.type === "single") return customVal.trim() || answers[s.id] || "";
+    if (s.type === "multi")  return customVal.trim() ? [...multiSel, customVal.trim()].join(", ") : multiSel.join(", ") || "Ninguna";
+    return "";
+  };
+
+  const goNext = async () => {
+    if (!canNext()) return;
+    const val = getValue();
+    const newAnswers = { ...answers, [s.id]: val };
     setAnswers(newAnswers);
-    setCustom("");
+    setCustomVal(""); setNumVal(""); setMultiSel([]);
 
     if (isLast) {
       setGenerating(true);
       try {
-        const profile = await callClaude(apiKey,
-          `Eres nutricionista experto. Basándote en el perfil del usuario, genera sus objetivos nutricionales diarios personalizados.
-Responde SOLO con JSON en una línea sin backticks.
-Formato: {"calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número,"resumen":"frase motivadora personalizada de 1 línea","consejo":"consejo clave para su objetivo"}`,
-          [{ type:"text", text:`Nombre: ${name||"Usuario"}. Objetivo: ${newAnswers.objetivo}. Ritmo: ${newAnswers.ritmo}. Actividad: ${newAnswers.actividad}. Dieta: ${newAnswers.dieta}. Restricciones: ${newAnswers.restricciones}. Genera calorías y macros diarios realistas y personalizados.` }], 400);
-        onDone({ ...newAnswers, nombre: name||"", ...profile });
-      } catch {
-        onDone({ ...newAnswers, nombre: name||"", calorias:2000, proteinas:150, carbohidratos:220, grasas:65, resumen:"¡A por ello!", consejo:"Sé constante y el resultado llegará." });
-      } finally { setGenerating(false); }
+        setGenStatus("Calculando tu metabolismo basal...");
+        await new Promise(r => setTimeout(r, 800));
+        setGenStatus("Analizando tu perfil completo...");
+        const profileStr = Object.entries(newAnswers).map(([k,v])=>`${k}: ${v}`).join(", ");
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+          body: JSON.stringify({
+            model:"claude-haiku-4-5-20251001", max_tokens:600,
+            system:`Eres nutricionista experto. Calcula con precisión los objetivos nutricionales diarios usando la fórmula Mifflin-St Jeor y el factor de actividad correcto. Responde SOLO con JSON en una línea sin backticks.
+Formato: {"calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número,"tmb":número,"tdee":número,"pasosObjetivo":número,"caloriasQuemar":número,"resumen":"frase motivadora 1 línea personalizada con su nombre","consejo":"consejo nutricional clave específico para su objetivo"}`,
+            messages:[{ role:"user", content:`Perfil completo: ${profileStr}. Calcula: TMB con Mifflin-St Jeor, TDEE según actividad, calorías diarias según objetivo y ritmo, macros según tipo de dieta preferida, pasos diarios recomendados y calorías a quemar con ejercicio.` }]
+          })
+        });
+        setGenStatus("Generando tu plan personalizado...");
+        const data = await res.json();
+        const text = data.content?.find(b=>b.type==="text")?.text || "{}";
+        let parsed = {};
+        try {
+          const clean = text.replace(/```json|```/g,"").trim();
+          const match = clean.match(/\{[\s\S]*\}/);
+          parsed = JSON.parse(match ? match[0] : clean);
+        } catch {}
+        const profile = {
+          ...newAnswers,
+          calorias:      parsed.calorias      || calcFallback(newAnswers).calorias,
+          proteinas:     parsed.proteinas     || calcFallback(newAnswers).proteinas,
+          carbohidratos: parsed.carbohidratos || calcFallback(newAnswers).carbohidratos,
+          grasas:        parsed.grasas        || calcFallback(newAnswers).grasas,
+          tmb:           parsed.tmb           || 0,
+          tdee:          parsed.tdee          || 0,
+          pasosObjetivo: parsed.pasosObjetivo || 8000,
+          caloriasQuemar:parsed.caloriasQuemar|| 300,
+          resumen:       parsed.resumen       || "¡Tu plan está listo, a por ello!",
+          consejo:       parsed.consejo       || "La constancia es la clave del éxito.",
+        };
+        setGenStatus("¡Listo! Abriendo tu plan...");
+        await new Promise(r => setTimeout(r, 500));
+        onDone(profile);
+      } catch(e) {
+        const fb = calcFallback(newAnswers);
+        onDone({ ...newAnswers, ...fb, resumen:"¡Tu plan está listo!", consejo:"La constancia es la clave." });
+      }
     } else {
       setStep(p => p + 1);
     }
   };
 
-  const progress = ((step + 1) / QUESTIONS.length) * 100;
+  const calcFallback = (ans) => {
+    const peso = parseFloat(ans.peso)||75, altura = parseFloat(ans.altura)||175, edad = parseFloat(ans.edad)||25;
+    const isMale = (ans.sexo||"Hombre").toLowerCase().includes("hombre");
+    const tmb = isMale ? 10*peso + 6.25*altura - 5*edad + 5 : 10*peso + 6.25*altura - 5*edad - 161;
+    const actMult = (ans.actividad||"").includes("Sedent") ? 1.2 : (ans.actividad||"").includes("Algo") ? 1.375 : (ans.actividad||"").includes("Moderado") ? 1.55 : (ans.actividad||"").includes("Muy") ? 1.725 : 1.9;
+    const tdee = Math.round(tmb * actMult);
+    const obj = ans.objetivo||"";
+    const cals = obj.includes("Perder") ? tdee - 400 : obj.includes("Ganar") ? tdee + 300 : tdee;
+    return { calorias:Math.round(cals), proteinas:Math.round(cals*0.30/4), carbohidratos:Math.round(cals*0.40/4), grasas:Math.round(cals*0.30/9), tmb:Math.round(tmb), tdee, pasosObjetivo:8000, caloriasQuemar:300 };
+  };
 
-  if (step === -1) return (
-    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"-apple-system,sans-serif" }}>
-      <div style={{ maxWidth:380, width:"100%", textAlign:"center" }}>
-        <img src="/icon-512.png" alt="" style={{ width:80, height:80, borderRadius:20, marginBottom:20 }} />
-        <div style={{ fontSize:26, fontWeight:900, marginBottom:8 }}>Bienvenido a NutriLens IA</div>
-        <div style={{ fontSize:14, color:C.text2, marginBottom:32, lineHeight:1.6 }}>Vamos a personalizar tu plan en 2 minutos. ¿Cómo te llamas?</div>
-        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre..."
-          onKeyDown={e=>e.key==="Enter"&&setStep(0)}
-          style={{ ...S.inp, fontSize:16, textAlign:"center", marginBottom:16 }} autoFocus />
-        <button onClick={()=>setStep(0)} style={{ width:"100%", padding:"15px", background:name.trim()?C.blue:C.surface2, border:"none", borderRadius:14, color:name.trim()?C.text:C.text3, fontWeight:900, fontSize:16, cursor:name.trim()?"pointer":"default" }}>
-          Empezar →
-        </button>
+  const toggleMulti = (opt) => {
+    if (opt === "Ninguna") { setMultiSel(["Ninguna"]); return; }
+    setMultiSel(p => {
+      const without = p.filter(x => x !== "Ninguna");
+      return without.includes(opt) ? without.filter(x=>x!==opt) : [...without, opt];
+    });
+  };
+
+  if (generating) return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"-apple-system,sans-serif" }}>
+      <img src="/icon-512.png" alt="" style={{ width:80, height:80, borderRadius:20, marginBottom:24, animation:"splashLogo 0.8s ease forwards" }} />
+      <div style={{ fontSize:18, fontWeight:900, marginBottom:8, textAlign:"center" }}>Creando tu plan personalizado</div>
+      <div style={{ fontSize:13, color:C.blue, marginBottom:32, textAlign:"center" }}>{genStatus}</div>
+      <div style={{ width:240, background:C.surface2, borderRadius:6, height:6, overflow:"hidden" }}>
+        <div style={{ height:"100%", width:"60%", background:C.blue, borderRadius:6, animation:"shimmerBar 1.2s ease-in-out infinite" }} />
       </div>
+      <style>{`@keyframes splashLogo{from{opacity:0;transform:scale(0.5)}to{opacity:1;transform:scale(1)}}`}</style>
     </div>
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", padding:"40px 24px 32px", fontFamily:"-apple-system,sans-serif", maxWidth:430, margin:"0 auto" }}>
-      {/* Progress */}
-      <div style={{ marginBottom:32 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
-          <span style={{ fontSize:12, color:C.text3 }}>Pregunta {step+1} de {QUESTIONS.length}</span>
+    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display',sans-serif", color:C.text, maxWidth:430, margin:"0 auto" }}>
+      {/* Header */}
+      <div style={{ padding:"24px 24px 0", position:"sticky", top:0, background:C.bg, zIndex:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+          <img src="/icon-512.png" alt="" style={{ width:28, height:28, borderRadius:8 }} />
+          <span style={{ fontSize:12, color:C.text3, fontWeight:600, letterSpacing:1.5, textTransform:"uppercase" }}>NutriLens IA — Setup</span>
+        </div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+          <span style={{ fontSize:12, color:C.text3 }}>{step+1} / {OB_STEPS.length}</span>
           <span style={{ fontSize:12, color:C.blue, fontWeight:700 }}>{Math.round(progress)}%</span>
         </div>
-        <div style={{ background:C.surface2, borderRadius:4, height:4 }}>
-          <div style={{ width:`${progress}%`, height:"100%", background:C.blue, borderRadius:4, transition:"width 0.4s ease" }} />
+        <div style={{ background:C.surface2, borderRadius:6, height:6, overflow:"hidden", marginBottom:4 }}>
+          <div style={{ width:`${progress}%`, height:"100%", background:`linear-gradient(90deg,${C.blue}88,${C.blue})`, borderRadius:6, transition:"width 0.5s ease" }} />
         </div>
       </div>
 
       {/* Question */}
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:40, marginBottom:16 }}>{q.emoji}</div>
-        <div style={{ fontSize:22, fontWeight:900, marginBottom:24, lineHeight:1.3 }}>{q.q}</div>
+      <div style={{ padding:"24px 24px 120px" }}>
+        <div style={{ fontSize:44, marginBottom:12 }}>{s.emoji}</div>
+        <div style={{ fontSize:22, fontWeight:900, marginBottom:6, lineHeight:1.2 }}>{s.q}</div>
+        <div style={{ fontSize:13, color:C.text3, marginBottom:24, lineHeight:1.4 }}>{s.hint}</div>
 
-        <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:20 }}>
-          {q.opts.map(opt => (
-            <button key={opt} onClick={() => selectOpt(opt)}
-              style={{ padding:"14px 16px", borderRadius:14, border:`1.5px solid ${answers[q.id]===opt && !custom ? C.blue : C.border}`, background: answers[q.id]===opt && !custom ? `${C.blue}22` : C.surface, color: answers[q.id]===opt && !custom ? C.blue : C.text2, fontWeight: answers[q.id]===opt && !custom ? 700 : 500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}>
-              {opt}
-            </button>
-          ))}
-          <input value={custom} onChange={e=>{setCustom(e.target.value);setAnswers(p=>({...p,[q.id]:""}));}}
-            placeholder="Otra opción (escribe aquí)..."
-            style={{ ...S.inp, border:`1.5px solid ${custom ? C.blue : C.border}`, color: custom ? C.blue : C.text2 }} />
-        </div>
+        {/* Text input */}
+        {s.type === "text" && (
+          <input value={customVal || answers[s.id] || ""}
+            onChange={e => { setCustomVal(e.target.value); setAnswers(p=>({...p,[s.id]:e.target.value})); }}
+            onKeyDown={e => e.key==="Enter" && goNext()}
+            placeholder={s.placeholder}
+            style={{ ...S.inp, fontSize:18, padding:"14px 16px" }} autoFocus />
+        )}
+
+        {/* Number input */}
+        {s.type === "number" && (
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <input type="number" value={numVal} onChange={e=>setNumVal(e.target.value)}
+              onKeyDown={e => e.key==="Enter" && goNext()}
+              placeholder={s.placeholder}
+              style={{ ...S.inp, fontSize:24, fontWeight:900, textAlign:"center", flex:1, color:C.blue }} autoFocus />
+            <span style={{ fontSize:16, color:C.text3, fontWeight:600, flexShrink:0 }}>{s.unit}</span>
+          </div>
+        )}
+
+        {/* Single select */}
+        {s.type === "single" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {s.opts.map(opt => {
+              const sel = answers[s.id]===opt && !customVal;
+              return (
+                <button key={opt} onClick={()=>{ setAnswers(p=>({...p,[s.id]:opt})); setCustomVal(""); }}
+                  style={{ padding:"14px 16px", borderRadius:14, border:`1.5px solid ${sel?C.blue:C.border}`, background:sel?`${C.blue}18`:C.surface, color:sel?C.blue:C.text2, fontWeight:sel?700:500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <span>{opt}</span>
+                  {sel && <span style={{ fontSize:16 }}>✓</span>}
+                </button>
+              );
+            })}
+            <input value={customVal} onChange={e=>{setCustomVal(e.target.value);setAnswers(p=>({...p,[s.id]:""}));}}
+              placeholder="Otra opción (escribe aquí)..."
+              style={{ ...S.inp, border:`1.5px solid ${customVal?C.blue:C.border}`, marginTop:4 }} />
+          </div>
+        )}
+
+        {/* Multi select */}
+        {s.type === "multi" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {s.opts.map(opt => {
+              const sel = multiSel.includes(opt);
+              return (
+                <button key={opt} onClick={()=>toggleMulti(opt)}
+                  style={{ padding:"13px 16px", borderRadius:14, border:`1.5px solid ${sel?C.blue:C.border}`, background:sel?`${C.blue}18`:C.surface, color:sel?C.blue:C.text2, fontWeight:sel?700:500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s", display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${sel?C.blue:C.border}`, background:sel?C.blue:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:12 }}>
+                    {sel && "✓"}
+                  </div>
+                  {opt}
+                </button>
+              );
+            })}
+            <input value={customVal} onChange={e=>setCustomVal(e.target.value)}
+              placeholder="Otro (escribe aquí)..."
+              style={{ ...S.inp, border:`1.5px solid ${customVal?C.blue:C.border}`, marginTop:4 }} />
+            {(multiSel.length > 0 || customVal) && (
+              <div style={{ fontSize:11, color:C.blue, fontWeight:600, marginTop:2 }}>
+                ✓ {multiSel.length + (customVal?1:0)} seleccionado{multiSel.length+( customVal?1:0)!==1?"s":""}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <div style={{ display:"flex", gap:10 }}>
-        {step > 0 && <button onClick={()=>setStep(p=>p-1)} style={{ flex:1, padding:"14px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, color:C.text2, fontWeight:700, fontSize:15, cursor:"pointer" }}>← Atrás</button>}
-        <button onClick={next} disabled={generating || (!answers[q.id] && !custom.trim())}
-          style={{ flex:2, padding:"14px", background: generating||(!answers[q.id]&&!custom.trim()) ? C.surface2 : C.blue, border:"none", borderRadius:14, color: generating||(!answers[q.id]&&!custom.trim()) ? C.text3 : C.text, fontWeight:900, fontSize:15, cursor: generating||(!answers[q.id]&&!custom.trim()) ? "default":"pointer" }}>
-          {generating ? "⏳ Generando tu plan..." : isLast ? "🚀 Crear mi plan" : "Siguiente →"}
+      {/* Fixed bottom buttons */}
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, padding:"12px 24px 28px", background:"rgba(0,0,0,0.95)", backdropFilter:"blur(16px)", borderTop:`1px solid ${C.border}`, display:"flex", gap:10 }}>
+        {step > 0 && (
+          <button onClick={()=>{ setStep(p=>p-1); setCustomVal(""); setNumVal(""); setMultiSel([]); }}
+            style={{ flex:1, padding:"14px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, color:C.text2, fontWeight:700, fontSize:15, cursor:"pointer" }}>
+            ← Atrás
+          </button>
+        )}
+        <button onClick={goNext} disabled={!canNext()}
+          style={{ flex:2, padding:"15px", background:canNext()?C.blue:C.surface2, border:"none", borderRadius:14, color:canNext()?C.text:C.text3, fontWeight:900, fontSize:15, cursor:canNext()?"pointer":"default", transition:"all 0.2s" }}>
+          {isLast ? "🚀 Crear mi plan" : "Siguiente →"}
         </button>
       </div>
     </div>
@@ -1411,7 +1518,16 @@ export default function App() {
 
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
-  const saveProfile = (p) => { ls.set("nl-profile", p); setProfile(p); if(p.calorias) setGoals({ calorias:p.calorias, proteinas:p.proteinas||150, carbohidratos:p.carbohidratos||220, grasas:p.grasas||65 }); };
+  const saveProfile = (p) => {
+    // Ensure all required fields have fallback values
+    const safe = {
+      calorias: 2000, proteinas: 150, carbohidratos: 220, grasas: 65,
+      pasosObjetivo: 8000, caloriasQuemar: 300, ...p
+    };
+    ls.set("nl-profile", safe);
+    setProfile(safe);
+    setGoals({ calorias: safe.calorias, proteinas: safe.proteinas, carbohidratos: safe.carbohidratos, grasas: safe.grasas });
+  };
 
   // Show setup screen if no API key
   if (!apiKey) return <SetupScreen onSave={saveApiKey} />;
@@ -1784,6 +1900,77 @@ export default function App() {
           </>
         )}
 
+        {/* ACTIVIDAD */}
+        {tab==="actividad" && (
+          <div>
+            <span style={S.label}>Tu objetivo de actividad hoy</span>
+
+            {/* Main activity goal card */}
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:20, marginBottom:12, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+              <div style={{ display:"flex", gap:16, marginBottom:16 }}>
+                <div style={{ flex:1, background:C.surface2, borderRadius:14, padding:"14px 12px", textAlign:"center" }}>
+                  <div style={{ fontSize:28 }}>👣</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:C.blue, marginTop:4 }}>{(profile?.pasosObjetivo||8000).toLocaleString()}</div>
+                  <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>pasos objetivo</div>
+                </div>
+                <div style={{ flex:1, background:C.surface2, borderRadius:14, padding:"14px 12px", textAlign:"center" }}>
+                  <div style={{ fontSize:28 }}>🔥</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:C.orange, marginTop:4 }}>{profile?.caloriasQuemar||300}</div>
+                  <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>kcal a quemar</div>
+                </div>
+              </div>
+              {activityRec && (
+                <div style={{ background:`${activityRec.color}11`, border:`1px solid ${activityRec.color}33`, borderRadius:12, padding:"10px 14px", display:"flex", gap:10, alignItems:"flex-start" }}>
+                  <span style={{ fontSize:18 }}>{activityRec.icon}</span>
+                  <div style={{ fontSize:12, color:C.text2, lineHeight:1.5 }}>{activityRec.msg}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Activity options */}
+            <span style={S.label}>¿Cómo quieres movererte hoy?</span>
+            {[
+              { icon:"🏃", name:"Salir a correr", desc:`${Math.round((profile?.caloriasQuemar||300)/8)} min a ritmo moderado`, kcal:profile?.caloriasQuemar||300, color:"#22c55e" },
+              { icon:"🏋️", name:"Sesión de gym", desc:`${Math.round((profile?.caloriasQuemar||300)/5)} min de entrenamiento`, kcal:profile?.caloriasQuemar||300, color:C.blue },
+              { icon:"🚶", name:"Caminar", desc:`${Math.round((profile?.caloriasQuemar||300)/5)} min a paso ligero`, kcal:profile?.caloriasQuemar||300, color:C.amber },
+              { icon:"🚴", name:"Ciclismo", desc:`${Math.round((profile?.caloriasQuemar||300)/10)} min en bici`, kcal:profile?.caloriasQuemar||300, color:C.pink },
+              { icon:"🏊", name:"Natación", desc:`${Math.round((profile?.caloriasQuemar||300)/9)} min en piscina`, kcal:profile?.caloriasQuemar||300, color:"#06b6d4" },
+              { icon:"🧘", name:"Yoga / estiramientos", desc:"45-60 min relajado", kcal:Math.round((profile?.caloriasQuemar||300)*0.5), color:"#a855f7" },
+            ].map((act, i) => (
+              <div key={i} style={{ ...S.card, display:"flex", alignItems:"center", gap:14, borderLeft:`3px solid ${act.color}` }}>
+                <div style={{ fontSize:28, width:40, textAlign:"center", flexShrink:0 }}>{act.icon}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:15, fontWeight:700 }}>{act.name}</div>
+                  <div style={{ fontSize:12, color:C.text3, marginTop:2 }}>{act.desc}</div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <div style={{ fontSize:16, fontWeight:900, color:act.color }}>~{act.kcal}</div>
+                  <div style={{ fontSize:9, color:C.text3 }}>kcal</div>
+                </div>
+              </div>
+            ))}
+
+            {/* Weekly activity context */}
+            <div style={{ ...S.card, marginTop:8 }}>
+              <span style={S.label}>Contexto semanal</span>
+              <div style={{ display:"flex", gap:10 }}>
+                <div style={{ flex:1, textAlign:"center" }}>
+                  <div style={{ fontSize:18, fontWeight:900, color:C.blue }}>{weekRemaining>=0?"+":""}{Math.round(weekRemaining)}</div>
+                  <div style={{ fontSize:10, color:C.text3 }}>kcal margen semana</div>
+                </div>
+                <div style={{ flex:1, textAlign:"center" }}>
+                  <div style={{ fontSize:18, fontWeight:900, color:C.orange }}>{yesterdayCals>0?Math.abs(Math.round(yesterdayExcess)):"-"}</div>
+                  <div style={{ fontSize:10, color:C.text3 }}>{yesterdayExcess>0?"kcal exceso ayer":"kcal déficit ayer"}</div>
+                </div>
+                <div style={{ flex:1, textAlign:"center" }}>
+                  <div style={{ fontSize:18, fontWeight:900, color:C.green }}>{streak}🔥</div>
+                  <div style={{ fontSize:10, color:C.text3 }}>días de racha</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* HISTORIAL */}
         {tab==="calendario" && (
           <>
@@ -1839,29 +2026,30 @@ export default function App() {
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"6px 12px", display:"flex", gap:2, zIndex:100 }}>
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"6px 8px", display:"flex", gap:2, zIndex:100 }}>
         {[
           ["hoy",    "🍌", "Hoy"],
+          ["actividad", "🏃", "Actividad"],
           ["calendario", "📅", "Historial"],
           ["recomendaciones", "✨", "Plan"],
         ].map(([id, icon, label]) => (
           <button key={id} onClick={()=>setTab(id)} style={{
-            flex:1, padding:"8px 4px", border:"none", borderRadius:12, cursor:"pointer",
+            flex:1, padding:"7px 4px", border:"none", borderRadius:12, cursor:"pointer",
             background: tab===id ? `${C.blue}22` : "transparent",
             display:"flex", flexDirection:"column", alignItems:"center", gap:2,
             transition:"all 0.2s",
           }}>
-            <span style={{ fontSize:19 }}>{icon}</span>
-            <span style={{ fontSize:10, fontWeight: tab===id ? 800 : 600, color: tab===id ? C.blue : C.text3 }}>{label}</span>
+            <span style={{ fontSize:18 }}>{icon}</span>
+            <span style={{ fontSize:9, fontWeight: tab===id ? 800 : 600, color: tab===id ? C.blue : C.text3 }}>{label}</span>
           </button>
         ))}
-        <button onClick={()=>setShowPlan(true)} style={{ flex:1, padding:"8px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2, transition:"all 0.2s" }}>
-          <span style={{ fontSize:19 }}>🗓️</span>
-          <span style={{ fontSize:10, fontWeight:600, color:C.text3 }}>Menús</span>
+        <button onClick={()=>setShowPlan(true)} style={{ flex:1, padding:"7px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+          <span style={{ fontSize:18 }}>🗓️</span>
+          <span style={{ fontSize:9, fontWeight:600, color:C.text3 }}>Menús</span>
         </button>
-        <button onClick={()=>setShowCoach(true)} style={{ flex:1, padding:"8px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2, transition:"all 0.2s" }}>
-          <span style={{ fontSize:19 }}>🤖</span>
-          <span style={{ fontSize:10, fontWeight:600, color:C.text3 }}>Coach</span>
+        <button onClick={()=>setShowCoach(true)} style={{ flex:1, padding:"7px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+          <span style={{ fontSize:18 }}>🤖</span>
+          <span style={{ fontSize:9, fontWeight:600, color:C.text3 }}>Coach</span>
         </button>
       </div>
 
