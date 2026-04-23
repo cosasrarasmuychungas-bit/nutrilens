@@ -49,29 +49,37 @@ const S = {
 
 // ── Splash Screen ─────────────────────────────────────────────
 function SplashScreen({ onDone }) {
+  const [fading, setFading] = useState(false);
+
   useEffect(() => {
-    const t = setTimeout(onDone, 2200);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setFading(true), 1600);
+    const t2 = setTimeout(onDone, 2200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
   return (
-    <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:999, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:0 }}>
-      <div style={{ animation:"splashLogo 1.8s ease forwards" }}>
-        <img src="/icon-512.png" alt="NutriLens" style={{ width:120, height:120, borderRadius:28, display:"block" }} />
+    <div style={{
+      position:"fixed", inset:0, background:C.bg, zIndex:999,
+      display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+      opacity: fading ? 0 : 1,
+      transition: fading ? "opacity 0.5s ease" : "none",
+      pointerEvents: fading ? "none" : "all",
+    }}>
+      <div style={{ animation:"splashLogo 1.2s cubic-bezier(.34,1.56,.64,1) forwards" }}>
+        <img src="/icon-512.png" alt="NutriLens" style={{ width:110, height:110, borderRadius:26, display:"block", boxShadow:`0 20px 60px ${C.blue}44` }} />
       </div>
-      <div style={{ animation:"splashText 1.8s ease forwards", marginTop:20, textAlign:"center" }}>
-        <div style={{ fontSize:28, fontWeight:900, letterSpacing:-1, color:C.text }}>NutriLens</div>
-        <div style={{ fontSize:13, color:C.blue, fontWeight:600, marginTop:4, letterSpacing:2, textTransform:"uppercase" }}>IA</div>
+      <div style={{ animation:"splashText 1.4s ease forwards", marginTop:18, textAlign:"center" }}>
+        <div style={{ fontSize:26, fontWeight:900, letterSpacing:-0.5, color:C.text }}>NutriLens</div>
+        <div style={{ fontSize:12, color:C.blue, fontWeight:700, marginTop:4, letterSpacing:3, textTransform:"uppercase" }}>IA</div>
       </div>
       <style>{`
         @keyframes splashLogo {
-          0%   { opacity:0; transform:scale(0.6) translateY(20px); }
-          60%  { opacity:1; transform:scale(1.05) translateY(-4px); }
-          100% { opacity:1; transform:scale(1) translateY(0); }
+          0%   { opacity:0; transform:scale(0.5); }
+          100% { opacity:1; transform:scale(1); }
         }
         @keyframes splashText {
-          0%   { opacity:0; transform:translateY(16px); }
-          50%  { opacity:0; transform:translateY(16px); }
-          100% { opacity:1; transform:translateY(0); }
+          0%,40% { opacity:0; transform:translateY(12px); }
+          100%   { opacity:1; transform:translateY(0); }
         }
       `}</style>
     </div>
@@ -971,9 +979,6 @@ export default function App() {
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
 
-  // Show splash
-  if (splash) return <SplashScreen onDone={() => setSplash(false)} />;
-
   // Show setup screen if no API key
   if (!apiKey) return <SetupScreen onSave={saveApiKey} />;
 
@@ -1082,7 +1087,9 @@ export default function App() {
   const selDayTotals = selDayData ? selDayData.meals.reduce((a,m)=>({cal:a.cal+m.totalCalorias,p:a.p+(m.totalProteinas||0),c:a.c+(m.totalCarbohidratos||0),g:a.g+(m.totalGrasas||0)}),{cal:0,p:0,c:0,g:0}) : null;
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:80, animation:"fadeIn 0.4s ease" }}>
+    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:80 }}>
+      {/* Splash overlay — renders on top, fades out */}
+      {splash && <SplashScreen onDone={() => setSplash(false)} />}
       {showSet    && <Settings goals={goals} setGoals={setGoals} slots={slots} setSlots={sl=>{setSlots(sl);if(!sl.find(s=>s.id===selSlot))setSelSlot(sl[0]?.id);}} onClose={()=>setShowSet(false)} onResetKey={resetApiKey} />}
       {showHealth && <HealthScorePanel onClose={()=>setShowHealth(false)} apiKey={apiKey} />}
 
