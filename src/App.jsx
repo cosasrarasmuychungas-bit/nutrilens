@@ -288,7 +288,323 @@ function SetupScreen({ onSave }) {
   );
 }
 
-// ── Animated Number ───────────────────────────────────────────
+// ── Onboarding Flow ───────────────────────────────────────────
+const QUESTIONS = [
+  {
+    id: "objetivo",
+    q: "¿Cuál es tu objetivo principal?",
+    emoji: "🎯",
+    opts: ["Perder grasa corporal", "Ganar músculo", "Mantener peso actual", "Mejorar salud general"],
+  },
+  {
+    id: "ritmo",
+    q: "¿A qué ritmo quieres avanzar?",
+    emoji: "⚡",
+    opts: ["Suave (0,25 kg/semana)", "Moderado (0,5 kg/semana)", "Rápido (1 kg/semana)", "Lo antes posible"],
+  },
+  {
+    id: "actividad",
+    q: "¿Cuál es tu nivel de actividad física?",
+    emoji: "🏃",
+    opts: ["Sedentario (escritorio, poco ejercicio)", "Algo activo (1-2 días/semana)", "Moderado (3-4 días/semana)", "Muy activo (5+ días/semana)"],
+  },
+  {
+    id: "dieta",
+    q: "¿Qué tipo de dieta prefieres?",
+    emoji: "🥗",
+    opts: ["Sin restricciones (todo)", "Alta en proteína", "Bajo en carbohidratos", "Mediterránea / saludable"],
+  },
+  {
+    id: "restricciones",
+    q: "¿Tienes alguna restricción alimentaria?",
+    emoji: "🚫",
+    opts: ["Ninguna", "Vegetariano", "Sin gluten", "Sin lactosa"],
+  },
+];
+
+function OnboardingFlow({ apiKey, onDone }) {
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [custom, setCustom] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [name, setName] = useState("");
+
+  const q = QUESTIONS[step];
+  const isLast = step === QUESTIONS.length - 1;
+  const isNameStep = step === -1;
+
+  const selectOpt = (opt) => {
+    setAnswers(p => ({ ...p, [q.id]: opt }));
+    setCustom("");
+  };
+
+  const next = async () => {
+    const val = custom.trim() || answers[q.id];
+    if (!val && !isNameStep) return;
+    const newAnswers = { ...answers, [q.id]: val || answers[q.id] };
+    setAnswers(newAnswers);
+    setCustom("");
+
+    if (isLast) {
+      setGenerating(true);
+      try {
+        const profile = await callClaude(apiKey,
+          `Eres nutricionista experto. Basándote en el perfil del usuario, genera sus objetivos nutricionales diarios personalizados.
+Responde SOLO con JSON en una línea sin backticks.
+Formato: {"calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número,"resumen":"frase motivadora personalizada de 1 línea","consejo":"consejo clave para su objetivo"}`,
+          [{ type:"text", text:`Nombre: ${name||"Usuario"}. Objetivo: ${newAnswers.objetivo}. Ritmo: ${newAnswers.ritmo}. Actividad: ${newAnswers.actividad}. Dieta: ${newAnswers.dieta}. Restricciones: ${newAnswers.restricciones}. Genera calorías y macros diarios realistas y personalizados.` }], 400);
+        onDone({ ...newAnswers, nombre: name||"", ...profile });
+      } catch {
+        onDone({ ...newAnswers, nombre: name||"", calorias:2000, proteinas:150, carbohidratos:220, grasas:65, resumen:"¡A por ello!", consejo:"Sé constante y el resultado llegará." });
+      } finally { setGenerating(false); }
+    } else {
+      setStep(p => p + 1);
+    }
+  };
+
+  const progress = ((step + 1) / QUESTIONS.length) * 100;
+
+  if (step === -1) return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"-apple-system,sans-serif" }}>
+      <div style={{ maxWidth:380, width:"100%", textAlign:"center" }}>
+        <img src="/icon-512.png" alt="" style={{ width:80, height:80, borderRadius:20, marginBottom:20 }} />
+        <div style={{ fontSize:26, fontWeight:900, marginBottom:8 }}>Bienvenido a NutriLens IA</div>
+        <div style={{ fontSize:14, color:C.text2, marginBottom:32, lineHeight:1.6 }}>Vamos a personalizar tu plan en 2 minutos. ¿Cómo te llamas?</div>
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre..."
+          onKeyDown={e=>e.key==="Enter"&&setStep(0)}
+          style={{ ...S.inp, fontSize:16, textAlign:"center", marginBottom:16 }} autoFocus />
+        <button onClick={()=>setStep(0)} style={{ width:"100%", padding:"15px", background:name.trim()?C.blue:C.surface2, border:"none", borderRadius:14, color:name.trim()?C.text:C.text3, fontWeight:900, fontSize:16, cursor:name.trim()?"pointer":"default" }}>
+          Empezar →
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", padding:"40px 24px 32px", fontFamily:"-apple-system,sans-serif", maxWidth:430, margin:"0 auto" }}>
+      {/* Progress */}
+      <div style={{ marginBottom:32 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+          <span style={{ fontSize:12, color:C.text3 }}>Pregunta {step+1} de {QUESTIONS.length}</span>
+          <span style={{ fontSize:12, color:C.blue, fontWeight:700 }}>{Math.round(progress)}%</span>
+        </div>
+        <div style={{ background:C.surface2, borderRadius:4, height:4 }}>
+          <div style={{ width:`${progress}%`, height:"100%", background:C.blue, borderRadius:4, transition:"width 0.4s ease" }} />
+        </div>
+      </div>
+
+      {/* Question */}
+      <div style={{ flex:1 }}>
+        <div style={{ fontSize:40, marginBottom:16 }}>{q.emoji}</div>
+        <div style={{ fontSize:22, fontWeight:900, marginBottom:24, lineHeight:1.3 }}>{q.q}</div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:20 }}>
+          {q.opts.map(opt => (
+            <button key={opt} onClick={() => selectOpt(opt)}
+              style={{ padding:"14px 16px", borderRadius:14, border:`1.5px solid ${answers[q.id]===opt && !custom ? C.blue : C.border}`, background: answers[q.id]===opt && !custom ? `${C.blue}22` : C.surface, color: answers[q.id]===opt && !custom ? C.blue : C.text2, fontWeight: answers[q.id]===opt && !custom ? 700 : 500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}>
+              {opt}
+            </button>
+          ))}
+          <input value={custom} onChange={e=>{setCustom(e.target.value);setAnswers(p=>({...p,[q.id]:""}));}}
+            placeholder="Otra opción (escribe aquí)..."
+            style={{ ...S.inp, border:`1.5px solid ${custom ? C.blue : C.border}`, color: custom ? C.blue : C.text2 }} />
+        </div>
+      </div>
+
+      <div style={{ display:"flex", gap:10 }}>
+        {step > 0 && <button onClick={()=>setStep(p=>p-1)} style={{ flex:1, padding:"14px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, color:C.text2, fontWeight:700, fontSize:15, cursor:"pointer" }}>← Atrás</button>}
+        <button onClick={next} disabled={generating || (!answers[q.id] && !custom.trim())}
+          style={{ flex:2, padding:"14px", background: generating||(!answers[q.id]&&!custom.trim()) ? C.surface2 : C.blue, border:"none", borderRadius:14, color: generating||(!answers[q.id]&&!custom.trim()) ? C.text3 : C.text, fontWeight:900, fontSize:15, cursor: generating||(!answers[q.id]&&!custom.trim()) ? "default":"pointer" }}>
+          {generating ? "⏳ Generando tu plan..." : isLast ? "🚀 Crear mi plan" : "Siguiente →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── AI Coach Panel ─────────────────────────────────────────────
+function AICoachPanel({ onClose, apiKey, profile, goals, history, meals }) {
+  const [messages, setMessages] = useState([{
+    role:"assistant",
+    text: `¡Hola${profile?.nombre ? ` ${profile.nombre}` : ""}! 👋 Soy tu coach nutricional personal. Puedo ayudarte con tu plan, responder dudas sobre nutrición, ajustar tus objetivos o lo que necesites. ¿En qué te ayudo hoy?`
+  }]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const bottomRef = useRef();
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
+
+  const send = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    setMessages(p => [...p, { role:"user", text:userMsg }]);
+    setLoading(true);
+    try {
+      const ctx = `Perfil del usuario: objetivo=${profile?.objetivo||"no definido"}, dieta=${profile?.dieta||"sin restricciones"}, restricciones=${profile?.restricciones||"ninguna"}, actividad=${profile?.actividad||"no definida"}. Objetivos diarios: ${goals.calorias}kcal, P${goals.proteinas}g C${goals.carbohidratos}g G${goals.grasas}g. Hoy lleva ${meals.reduce((s,m)=>s+m.totalCalorias,0)} kcal consumidas con ${meals.length} comidas.`;
+      const historial = messages.slice(-6).map(m => `${m.role==="user"?"Usuario":"Coach"}: ${m.text}`).join("\n");
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+        body: JSON.stringify({ model:"claude-sonnet-4-5-20250929", max_tokens:300,
+          system:`Eres NutriCoach, el coach nutricional personal y amigable del usuario. Responde en texto plano conversacional, directo y motivador en español. Máximo 3-4 frases. Contexto: ${ctx}`,
+          messages:[{ role:"user", content:`${historial}\nUsuario: ${userMsg}` }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.find(b=>b.type==="text")?.text || "No pude responder, inténtalo de nuevo.";
+      setMessages(p => [...p, { role:"assistant", text }]);
+    } catch {
+      setMessages(p => [...p, { role:"assistant", text:"Lo siento, no pude procesar tu mensaje. Inténtalo de nuevo." }]);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:300, display:"flex", flexDirection:"column", fontFamily:"-apple-system,sans-serif" }}>
+      <div style={{ padding:"20px 20px 12px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", background:C.bg }}>
+        <div>
+          <div style={{ fontSize:11, color:C.blue, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5 }}>NutriCoach IA</div>
+          <div style={{ fontSize:18, fontWeight:900 }}>Tu coach personal</div>
+        </div>
+        <button onClick={onClose} style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, color:C.text2, fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+      </div>
+
+      <div style={{ flex:1, overflowY:"auto", padding:"16px 20px", display:"flex", flexDirection:"column", gap:12 }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start" }}>
+            {m.role==="assistant" && <div style={{ width:32, height:32, borderRadius:10, background:C.blue+"22", border:`1px solid ${C.blue}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, marginRight:10, alignSelf:"flex-end" }}>🥗</div>}
+            <div style={{
+              maxWidth:"80%", padding:"12px 14px", borderRadius: m.role==="user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+              background: m.role==="user" ? C.blue : C.surface,
+              border: m.role==="user" ? "none" : `1px solid ${C.border}`,
+              fontSize:14, lineHeight:1.5, color:C.text,
+            }}>{m.text}</div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <div style={{ width:32, height:32, borderRadius:10, background:C.blue+"22", border:`1px solid ${C.blue}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🥗</div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:"18px 18px 18px 4px", padding:"12px 16px" }}>
+              <div style={{ display:"flex", gap:4 }}>
+                {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:C.text3, animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div style={{ padding:"12px 20px 24px", borderTop:`1px solid ${C.border}`, background:C.bg, display:"flex", gap:10 }}>
+        <input value={input} onChange={e=>setInput(e.target.value)} placeholder="Pregunta a tu coach..."
+          onKeyDown={e=>e.key==="Enter"&&send()}
+          style={{ ...S.inp, flex:1 }} />
+        <button onClick={send} disabled={loading||!input.trim()}
+          style={{ width:44, height:44, borderRadius:12, background:loading||!input.trim()?C.surface2:C.blue, border:"none", cursor:loading||!input.trim()?"default":"pointer", color:C.text, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          ↑
+        </button>
+      </div>
+      <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
+    </div>
+  );
+}
+
+// ── Weekly Plan Panel ──────────────────────────────────────────
+function WeeklyPlanPanel({ onClose, apiKey, profile, goals }) {
+  const [plan, setPlan] = useState(() => ls.get("nl-weekly-plan") || null);
+  const [generating, setGenerating] = useState(false);
+  const [dayIdx, setDayIdx] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1);
+
+  const WEEK_DAYS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+
+  const generate = async () => {
+    setGenerating(true);
+    try {
+      const result = await callClaude(apiKey,
+        `Eres nutricionista experto. Crea un menú semanal completo y variado.
+Responde SOLO con JSON en una línea sin backticks.
+Formato: {"dias":[{"dia":"Lunes","desayuno":{"nombre":"nombre","calorias":número,"descripcion":"ingredientes breves"},"almuerzo":{"nombre":"nombre","calorias":número,"descripcion":"ingredientes breves"},"comida":{"nombre":"nombre","calorias":número,"descripcion":"ingredientes breves"},"merienda":{"nombre":"nombre","calorias":número,"descripcion":"ingredientes breves"},"cena":{"nombre":"nombre","calorias":número,"descripcion":"ingredientes breves"},"totalCalorias":número},...]} (7 días)`,
+        [{ type:"text", text:`Objetivo del usuario: ${profile?.objetivo||"salud general"}. Dieta: ${profile?.dieta||"sin restricciones"}. Restricciones: ${profile?.restricciones||"ninguna"}. Calorías diarias objetivo: ${goals.calorias} kcal. Proteínas: ${goals.proteinas}g, Carbos: ${goals.carbohidratos}g, Grasas: ${goals.grasas}g. Crea un menú variado, equilibrado y apetecible para 7 días.` }], 2000);
+      if (result.dias) { ls.set("nl-weekly-plan", result); setPlan(result); }
+    } catch {}
+    finally { setGenerating(false); }
+  };
+
+  const day = plan?.dias?.[dayIdx];
+  const MEALS_ORDER = [["desayuno","☀️","Desayuno"],["almuerzo","🌤️","Almuerzo"],["comida","🌞","Comida"],["merienda","🌥️","Merienda"],["cena","🌙","Cena"]];
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:300, overflowY:"auto", fontFamily:"-apple-system,sans-serif" }}>
+      <div style={{ maxWidth:430, margin:"0 auto", padding:"24px 20px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+          <div>
+            <div style={{ fontSize:11, color:C.blue, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5, marginBottom:3 }}>Personalizado por IA</div>
+            <div style={{ fontSize:20, fontWeight:900 }}>Menú semanal</div>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={generate} disabled={generating} style={{ padding:"8px 14px", background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:10, color:C.blue, fontWeight:700, fontSize:12, cursor:generating?"default":"pointer" }}>
+              {generating?"⏳":"🔄"} {generating?"Generando...":"Regenerar"}
+            </button>
+            <button onClick={onClose} style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, color:C.text2, fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+          </div>
+        </div>
+
+        {!plan ? (
+          <div style={{ textAlign:"center", padding:"60px 20px" }}>
+            <div style={{ fontSize:56, marginBottom:16 }}>🍽️</div>
+            <div style={{ fontSize:18, fontWeight:700, marginBottom:8 }}>Sin menú generado</div>
+            <div style={{ fontSize:13, color:C.text2, marginBottom:24, lineHeight:1.6 }}>La IA creará un menú semanal completamente personalizado a tus objetivos y preferencias.</div>
+            <button onClick={generate} disabled={generating} style={{ padding:"15px 32px", background:C.blue, border:"none", borderRadius:14, color:C.text, fontWeight:900, fontSize:15, cursor:"pointer" }}>
+              {generating?"⏳ Generando tu menú...":"✨ Generar menú personalizado"}
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Day selector */}
+            <div style={{ display:"flex", gap:6, marginBottom:20, overflowX:"auto", paddingBottom:4 }}>
+              {WEEK_DAYS.map((d, i) => (
+                <button key={d} onClick={()=>setDayIdx(i)}
+                  style={{ padding:"8px 12px", borderRadius:12, border:`1px solid ${dayIdx===i?C.blue:C.border}`, background:dayIdx===i?`${C.blue}22`:C.surface, color:dayIdx===i?C.blue:C.text3, fontWeight:dayIdx===i?800:500, fontSize:12, cursor:"pointer", flexShrink:0, whiteSpace:"nowrap" }}>
+                  {d.slice(0,3)}
+                </button>
+              ))}
+            </div>
+
+            {day && (
+              <div>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                  <div style={{ fontSize:18, fontWeight:900 }}>{WEEK_DAYS[dayIdx]}</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:C.orange }}>{day.totalCalorias} kcal</div>
+                </div>
+                {MEALS_ORDER.map(([key, emoji, label]) => {
+                  const m = day[key];
+                  if (!m) return null;
+                  const accent = C.slotColors[label] || C.blue;
+                  return (
+                    <div key={key} style={{ ...S.card, borderLeft:`3px solid ${accent}`, marginBottom:10 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:10, color:accent, fontWeight:700, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>{emoji} {label}</div>
+                          <div style={{ fontSize:15, fontWeight:800, marginBottom:4 }}>{m.nombre}</div>
+                          <div style={{ fontSize:12, color:C.text2, lineHeight:1.4 }}>{m.descripcion}</div>
+                        </div>
+                        <div style={{ textAlign:"right", flexShrink:0, marginLeft:12 }}>
+                          <div style={{ fontSize:16, fontWeight:900, color:C.orange }}>{m.calorias}</div>
+                          <div style={{ fontSize:9, color:C.text3 }}>kcal</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 function AnimatedNumber({ value, duration = 600, style }) {
   const [display, setDisplay] = useState(value);
   const prevRef = useRef(value);
@@ -642,8 +958,12 @@ function Settings({ goals, setGoals, slots, setSlots, onClose, onResetKey }) {
           Guardar cambios
         </button>
         <button onClick={() => { if(confirm("¿Cambiar la clave de API?")) onResetKey(); }}
-          style={{ width:"100%", padding:"12px", background:"none", border:`1px solid ${C.border}`, borderRadius:14, color:C.text3, fontWeight:600, fontSize:13, cursor:"pointer" }}>
+          style={{ width:"100%", padding:"12px", background:"none", border:`1px solid ${C.border}`, borderRadius:14, color:C.text3, fontWeight:600, fontSize:13, cursor:"pointer", marginBottom:8 }}>
           Cambiar clave de API
+        </button>
+        <button onClick={() => { if(confirm("¿Repetir el cuestionario inicial? Tus objetivos se regenerarán.")) { ls.set("nl-profile",null); onResetKey(); } }}
+          style={{ width:"100%", padding:"12px", background:"none", border:`1px solid ${C.border}`, borderRadius:14, color:C.text3, fontWeight:600, fontSize:13, cursor:"pointer" }}>
+          Repetir cuestionario inicial
         </button>
       </div>
     </div>
@@ -1046,7 +1366,10 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
 // ── Main App ──────────────────────────────────────────────────
 export default function App() {
   const [apiKey,      setApiKey]      = useState(() => ls.get("nl-apikey") || "");
+  const [profile,     setProfile]     = useState(() => ls.get("nl-profile") || null);
   const [splash,      setSplash]      = useState(true);
+  const [showCoach,   setShowCoach]   = useState(false);
+  const [showPlan,    setShowPlan]    = useState(false);
   const [meals,       setMeals]       = useState(() => {
     const h = ls.get("nl-history") || {};
     return h[today()]?.meals || [];
@@ -1088,9 +1411,13 @@ export default function App() {
 
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
+  const saveProfile = (p) => { ls.set("nl-profile", p); setProfile(p); if(p.calorias) setGoals({ calorias:p.calorias, proteinas:p.proteinas||150, carbohidratos:p.carbohidratos||220, grasas:p.grasas||65 }); };
 
   // Show setup screen if no API key
   if (!apiKey) return <SetupScreen onSave={saveApiKey} />;
+
+  // Show onboarding if no profile
+  if (!profile) return <OnboardingFlow apiKey={apiKey} onDone={saveProfile} />;
 
   // Derived
   const totals = meals.reduce((a,m) => ({cal:a.cal+m.totalCalorias,p:a.p+(m.totalProteinas||0),c:a.c+(m.totalCarbohidratos||0),g:a.g+(m.totalGrasas||0)}),{cal:0,p:0,c:0,g:0});
@@ -1200,6 +1527,31 @@ export default function App() {
   const streak = getStreak(history);
   const badge  = getStatusBadge(pct, remaining);
 
+  // Weekly budget
+  const weeklyGoal = goals.calorias * 7;
+  const getWeekCals = () => {
+    let total = 0;
+    const d = new Date();
+    for (let i = 0; i < 7; i++) {
+      const ds = new Date(d.getFullYear(), d.getMonth(), d.getDate() - i).toISOString().split("T")[0];
+      total += (history[ds]?.meals||[]).reduce((s,m)=>s+m.totalCalorias,0);
+    }
+    return total;
+  };
+  const weekCals = getWeekCals();
+  const weekRemaining = weeklyGoal - weekCals;
+
+  // Activity recommendation based on yesterday
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+  const yesterdayCals = (history[yesterdayStr]?.meals||[]).reduce((s,m)=>s+m.totalCalorias,0);
+  const yesterdayExcess = yesterdayCals - goals.calorias;
+  const activityRec = yesterdayCals > 0 ? (
+    yesterdayExcess > 300  ? { msg:`Ayer comiste ${Math.round(yesterdayExcess)} kcal de más. Intenta quemar unas ${Math.round(yesterdayExcess)} kcal hoy (~${Math.round(yesterdayExcess/7)} min de cardio).`, color:C.orange, icon:"🏃" } :
+    yesterdayExcess < -300 ? { msg:`Ayer estuviste en déficit de ${Math.abs(Math.round(yesterdayExcess))} kcal. Hoy puedes comer un poco más o descansar.`, color:C.green, icon:"💚" } :
+    { msg:`Ayer estuviste en objetivo. ¡Sigue así hoy!`, color:C.blue, icon:"🎯" }
+  ) : null;
+
   return (
     <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:90 }}>
       {/* Dot texture background */}
@@ -1210,6 +1562,8 @@ export default function App() {
       {showSuccess && <SuccessTick onDone={() => setShowSuccess(false)} />}
       {showSet     && <Settings goals={goals} setGoals={setGoals} slots={slots} setSlots={sl=>{setSlots(sl);if(!sl.find(s=>s.id===selSlot))setSelSlot(sl[0]?.id);}} onClose={()=>setShowSet(false)} onResetKey={resetApiKey} />}
       {showHealth  && <HealthScorePanel onClose={()=>setShowHealth(false)} apiKey={apiKey} />}
+      {showCoach   && <AICoachPanel onClose={()=>setShowCoach(false)} apiKey={apiKey} profile={profile} goals={goals} history={history} meals={meals} />}
+      {showPlan    && <WeeklyPlanPanel onClose={()=>setShowPlan(false)} apiKey={apiKey} profile={profile} goals={goals} />}
 
       {/* HEADER */}
       <div style={{ position:"sticky", top:0, zIndex:100, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", borderBottom:`1px solid ${C.border}`, padding:"16px 20px 12px" }}>
@@ -1286,7 +1640,27 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{ padding:"12px 20px", position:"relative", zIndex:1 }}>
+      {/* Weekly budget + activity rec */}
+      <div style={{ padding:"0 20px 4px", position:"relative", zIndex:1 }}>
+        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"12px 14px", marginBottom:8, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.04)" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <span style={{ fontSize:10, color:C.text3, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5 }}>Presupuesto semanal</span>
+            <span style={{ fontSize:11, fontWeight:700, color:weekRemaining>=0?C.blue:C.red }}>{weekRemaining>=0?`${Math.round(weekRemaining).toLocaleString()} kcal libres`:`${Math.round(Math.abs(weekRemaining)).toLocaleString()} kcal excedidas`}</span>
+          </div>
+          <div style={{ background:C.surface2, borderRadius:4, height:5, overflow:"hidden" }}>
+            <div style={{ width:`${Math.min(weekCals/weeklyGoal*100,100)}%`, height:"100%", background:weekCals>weeklyGoal?C.red:C.blue, borderRadius:4, transition:"width 0.6s ease" }} />
+          </div>
+          <div style={{ fontSize:10, color:C.text3, marginTop:5 }}>{Math.round(weekCals).toLocaleString()} de {weeklyGoal.toLocaleString()} kcal esta semana</div>
+        </div>
+        {activityRec && (
+          <div style={{ background:`${activityRec.color}11`, border:`1px solid ${activityRec.color}33`, borderRadius:14, padding:"10px 14px", marginBottom:4, display:"flex", gap:10, alignItems:"flex-start" }}>
+            <span style={{ fontSize:18, flexShrink:0 }}>{activityRec.icon}</span>
+            <div style={{ fontSize:12, color:C.text2, lineHeight:1.5 }}>{activityRec.msg}</div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding:"8px 20px", position:"relative", zIndex:1 }}>
 
         {/* HOY */}
         {tab==="hoy" && (
@@ -1465,22 +1839,30 @@ export default function App() {
       </div>
 
       {/* BOTTOM NAV */}
-      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.92)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"8px 20px", display:"flex", gap:4, zIndex:100 }}>
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"6px 12px", display:"flex", gap:2, zIndex:100 }}>
         {[
           ["hoy",    "🍌", "Hoy"],
           ["calendario", "📅", "Historial"],
-          ["recomendaciones", "✨", recs?"Plan ·":"Plan"],
+          ["recomendaciones", "✨", "Plan"],
         ].map(([id, icon, label]) => (
           <button key={id} onClick={()=>setTab(id)} style={{
-            flex:1, padding:"8px 4px", border:"none", borderRadius:14, cursor:"pointer",
+            flex:1, padding:"8px 4px", border:"none", borderRadius:12, cursor:"pointer",
             background: tab===id ? `${C.blue}22` : "transparent",
-            display:"flex", flexDirection:"column", alignItems:"center", gap:3,
+            display:"flex", flexDirection:"column", alignItems:"center", gap:2,
             transition:"all 0.2s",
           }}>
-            <span style={{ fontSize:20 }}>{icon}</span>
-            <span style={{ fontSize:10, fontWeight: tab===id ? 800 : 600, color: tab===id ? C.blue : C.text3, letterSpacing:0.3 }}>{label}</span>
+            <span style={{ fontSize:19 }}>{icon}</span>
+            <span style={{ fontSize:10, fontWeight: tab===id ? 800 : 600, color: tab===id ? C.blue : C.text3 }}>{label}</span>
           </button>
         ))}
+        <button onClick={()=>setShowPlan(true)} style={{ flex:1, padding:"8px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2, transition:"all 0.2s" }}>
+          <span style={{ fontSize:19 }}>🗓️</span>
+          <span style={{ fontSize:10, fontWeight:600, color:C.text3 }}>Menús</span>
+        </button>
+        <button onClick={()=>setShowCoach(true)} style={{ flex:1, padding:"8px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2, transition:"all 0.2s" }}>
+          <span style={{ fontSize:19 }}>🤖</span>
+          <span style={{ fontSize:10, fontWeight:600, color:C.text3 }}>Coach</span>
+        </button>
       </div>
 
       <style>{`
