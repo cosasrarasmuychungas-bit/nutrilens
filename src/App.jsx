@@ -1412,18 +1412,25 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
                 <div style={{ position:"relative", width:120, height:120, flexShrink:0 }}>
                   <svg width="120" height="120" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="52" fill="none" stroke={C.surface2} strokeWidth="8"/>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke={col} strokeWidth="8"
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#healthGradient)" strokeWidth="8"
                       strokeDasharray={`${circ}`} strokeDashoffset={`${circ*(1-sc/100)}`}
                       strokeLinecap="round" transform="rotate(-90 60 60)" style={{ transition:"stroke-dashoffset 1s ease" }}/>
+                    <defs>
+                      <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ef4444" />
+                        <stop offset="50%" stopColor="#eab308" />
+                        <stop offset="100%" stopColor="#00ff66" />
+                      </linearGradient>
+                    </defs>
                   </svg>
                   <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-                    <div style={{ fontSize:28, fontWeight:900, color:col, lineHeight:1 }}>{sc}</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:scoreColor(sc), lineHeight:1 }}>{sc}</div>
                     <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>/100</div>
                   </div>
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:11, color:C.text3, marginBottom:4 }}>{result.nombre}</div>
-                  <div style={{ fontSize:22, fontWeight:900, color:col, marginBottom:6 }}>{result.categoria||(sc>=75?"Excelente":sc>=50?"Buena":sc>=30?"Regular":"Evitar")}</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:scoreColor(sc), marginBottom:6 }}>{result.categoria||(sc>=75?"Excelente":sc>=50?"Buena":sc>=30?"Regular":"Evitar")}</div>
                   <div style={{ fontSize:13, color:C.text2, lineHeight:1.4 }}>{result.resumen}</div>
                 </div>
               </div>
@@ -1509,18 +1516,13 @@ export default function App() {
   
   const [showInputPanel, setShowInputPanel] = useState(false);
   
-  // Estado para la imagen aleatoria de la tarjeta superior
-  const [bgImg, setBgImg] = useState("");
+  // Estado para la imagen aleatoria de la tarjeta superior (inicializada de inmediato)
+  const [bgImg] = useState(() => BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
 
   const fileRef  = useRef();
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
-
-  useEffect(() => {
-    // Escoger imagen de fondo aleatoria al cargar la app
-    setBgImg(BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
-  }, []);
 
   useEffect(() => {
     const nh = { ...ls.get("nl-history") || {}, [todStr]: { meals, date:todStr } };
