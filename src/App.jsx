@@ -1538,18 +1538,23 @@ export default function App() {
   
   const [showInputPanel, setShowInputPanel] = useState(false);
   
-  // -- LÓGICA DE CARRUSEL CROSSFADE ANTI-BLACKSCREEN --
-  // Estado para saber qué índice de BG_CAROUSEL estamos mostrando actualmente
-  const [bgIdx, setBgIdx] = useState(0);
+  // -- LÓGICA DE CARRUSEL CROSSFADE INTELIGENTE (SIN BUG DE PANTALLA NEGRA) --
+  // Elegimos un número aleatorio al montar la app para empezar en una foto al azar
+  const [bgIdx, setBgIdx] = useState(() => Math.floor(Math.random() * BG_CAROUSEL.length));
 
   useEffect(() => {
-    // Cambiar la imagen cada 10 segundos
-    const timer = setInterval(() => {
+    // Precargador de imágenes. Si la foto actual es la N, intentamos que la N+1 ya esté en la RAM.
+    const preloader = new Image();
+    preloader.src = BG_CAROUSEL[(bgIdx + 1) % BG_CAROUSEL.length];
+
+    // Cambiar la imagen actual cada 15 segundos
+    const timer = setTimeout(() => {
       setBgIdx((prev) => (prev + 1) % BG_CAROUSEL.length);
-    }, 10000);
-    return () => clearInterval(timer);
-  }, []);
-  // ----------------------------------------------------
+    }, 15000);
+    
+    return () => clearTimeout(timer);
+  }, [bgIdx]);
+  // --------------------------------------------------------------------------
 
   const fileRef  = useRef();
   const camRef   = useRef();
@@ -1811,19 +1816,14 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD - Carrusel con Crossfade Inteligente */}
+        {/* PREMIUM CALORIE CARD - Carrusel con Crossfade Inteligente (Sin fallos) */}
         <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)", backgroundColor:"#1a1c23" }}>
             
             {/* Capas de imágenes superpuestas (Ventana deslizante) */}
             {BG_CAROUSEL.map((url, i) => {
-              // Solo montamos las imágenes actuales, anteriores y siguientes en el DOM
-              // para no colapsar la conexión con 20 descargas a la vez.
+              // Solo mostramos (con opacity) la actual, para evitar problemas de parpadeo, todas están en el DOM pero ocultas
               const isCurrent = i === bgIdx;
-              const isNext = i === (bgIdx + 1) % BG_CAROUSEL.length;
-              const isPrev = i === (bgIdx - 1 + BG_CAROUSEL.length) % BG_CAROUSEL.length;
-
-              if (!isCurrent && !isNext && !isPrev) return null;
-
+              
               return (
                 <div 
                   key={url}
