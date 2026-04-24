@@ -14,28 +14,28 @@ const EMOJIS = ["☀️","🌤️","🌞","🌥️","🌙","🍳","🥗","🍱",
 const DAYS   = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-// 20 Imágenes de fondo relajantes, oscuras y de alta calidad
+// 20 Imágenes de fondo fijas y estables (Montañas, noche, lagos, texturas relajantes)
 const BG_CAROUSEL = [
-  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop", // Montañas oscuras
-  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop", // Noche/Naturaleza
-  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop", // Paisaje niebla
-  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop", // Lago relajante
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop", // Bosque oscuro
-  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=800&auto=format&fit=crop", // Aurora y pinos
-  "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop", // Bosque desde arriba
-  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=800&auto=format&fit=crop", // Montaña brumosa
-  "https://images.unsplash.com/photo-1476820865390-c52aeebb9891?q=80&w=800&auto=format&fit=crop", // Cima montañas
-  "https://images.unsplash.com/photo-1500534623283-258267364177?q=80&w=800&auto=format&fit=crop", // Lago y montañas
-  "https://images.unsplash.com/photo-1497449985806-ea5978a63ce5?q=80&w=800&auto=format&fit=crop", // Nubes grises
-  "https://images.unsplash.com/photo-1418065460487-3ce7eb3694f4?q=80&w=800&auto=format&fit=crop", // Pinos y niebla
-  "https://images.unsplash.com/photo-1504280365736-233bb9fa4c7b?q=80&w=800&auto=format&fit=crop", // Montañas silueta
-  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop", // Cordillera oscura
-  "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop", // Arboles de noche
-  "https://images.unsplash.com/photo-1428908728789-d2de8ae1e5e8?q=80&w=800&auto=format&fit=crop", // Rio sereno
-  "https://images.unsplash.com/photo-1503195232765-a83d73db3900?q=80&w=800&auto=format&fit=crop", // Textura piedra natural
-  "https://images.unsplash.com/photo-1439853949703-ff5a8d2503aa?q=80&w=800&auto=format&fit=crop", // Lago reflejo oscuro
-  "https://images.unsplash.com/photo-1458668383970-45f4df210515?q=80&w=800&auto=format&fit=crop", // Lago cristalino
-  "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop"  // Naturaleza profunda
+  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1476820865390-c52aeebb9891?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1500534623283-258267364177?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1497449985806-ea5978a63ce5?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1418065460487-3ce7eb3694f4?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1504280365736-233bb9fa4c7b?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1428908728789-d2de8ae1e5e8?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1503195232765-a83d73db3900?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1439853949703-ff5a8d2503aa?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1458668383970-45f4df210515?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop"
 ];
 
 const C = {
@@ -189,21 +189,21 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
 
 // ── Food analysis ─────────────────────────────────────────────
 async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
-  const pCtx = profile ? `Usuario: objetivo=${profile.objetivo||"salud"}, dieta=${profile.dieta||"sin restricciones"}, restricciones=${profile.restricciones||"ninguna"}, peso=${profile.peso||75}kg.` : "";
+  const pCtx = profile ? `Usuario: objetivo=${profile.objetivo||"salud"}, dieta=${profile.dieta||"sin restricciones"}, peso=${profile.peso||75}kg.` : "";
   const userContent = base64
     ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con máxima precisión nutricional." }]
     : [{ type:"text", text:`Analiza este texto de comida: ${text}` }];
   return callClaude(apiKey,
-    `Eres un nutricionista experto y un sistema de visión artificial avanzado. Tu tarea es analizar los alimentos. ${pCtx}
+    `Eres un nutricionista experto y un sistema de visión artificial avanzado. ${pCtx}
 REGLAS VITALES Y ESTRICTAS:
-1. IDENTIFICACIÓN PROFUNDA: Detecta cada ingrediente visible. Si hay salsas, aderezos o métodos de cocción (frito, empanado, a la plancha con aceite), estima y SUMA esas calorías ocultas (aceites/grasas).
-2. CANTIDADES REALISTAS: Asigna gramos razonables basados en escalas estándar visuales (ej: 1 huevo=60g, 1 tostada normal=35g, cucharada de aceite=15g, filete mediano=150g).
-3. DESCRIPCIÓN MINIMALISTA: La propiedad "descripcion" debe ser SOLO el nombre del plato genérico en 3 a 5 palabras máximo (ej: "Salmón con arroz y verduras"). ¡CERO explicaciones en este campo!
-4. ESTRUCTURA DE PLATOS: En la lista "platos", el "nombre" debe incluir el ingrediente exacto y el peso estimado deducido (ej: "Arroz blanco cocido (150g)").
-Genera SOLO un JSON válido en una sola línea. NADA de backticks, ni markdown, ni texto extra.
+1. IDENTIFICACIÓN PROFUNDA: Detecta cada ingrediente visible. Si hay métodos de cocción (frito, a la plancha), estima y SUMA esas calorías ocultas (aceites).
+2. CANTIDADES REALISTAS: Asigna gramos razonables basados en escalas estándar.
+3. DESCRIPCIÓN MINIMALISTA: La propiedad "descripcion" debe ser SOLO el nombre del plato en MÁXIMO 3 o 4 palabras (ej: "Pollo con arroz"). ¡CERO EXPLICACIONES!
+4. ESTRUCTURA DE PLATOS: En la lista "platos", el "nombre" debe ser ingrediente + cantidad (ej: "Pechuga de pollo (150g)").
+Genera SOLO un JSON válido en una sola línea.
 FORMATO EXACTO:
-{"platos":[{"nombre":"ingrediente exacto (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase de 10 palabras si encaja con su objetivo"}
-Si NO detectas comida: {"error":"No se detectó comida en la imagen."}`,
+{"platos":[{"nombre":"ingrediente exacto (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"NOMBRE GENÉRICO CORTO","consejoPerfil":"1 frase corta"}
+Si NO detectas comida: {"error":"No se detectó comida."}`,
     userContent, 1000);
 }
 
@@ -1538,23 +1538,9 @@ export default function App() {
   
   const [showInputPanel, setShowInputPanel] = useState(false);
   
-  // -- LÓGICA DE CARRUSEL CROSSFADE INTELIGENTE (SIN BUG DE PANTALLA NEGRA) --
-  // Elegimos un número aleatorio al montar la app para empezar en una foto al azar
-  const [bgIdx, setBgIdx] = useState(() => Math.floor(Math.random() * BG_CAROUSEL.length));
-
-  useEffect(() => {
-    // Precargador de imágenes. Si la foto actual es la N, intentamos que la N+1 ya esté en la RAM.
-    const preloader = new Image();
-    preloader.src = BG_CAROUSEL[(bgIdx + 1) % BG_CAROUSEL.length];
-
-    // Cambiar la imagen actual cada 15 segundos
-    const timer = setTimeout(() => {
-      setBgIdx((prev) => (prev + 1) % BG_CAROUSEL.length);
-    }, 15000);
-    
-    return () => clearTimeout(timer);
-  }, [bgIdx]);
-  // --------------------------------------------------------------------------
+  // -- FOTO ALEATORIA DE FONDO ESTATICA POR SESION --
+  // Escogemos UNA sola foto. No cambiará hasta recargar la app.
+  const [bgImg] = useState(() => BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
 
   const fileRef  = useRef();
   const camRef   = useRef();
@@ -1591,39 +1577,29 @@ export default function App() {
     setSplash(false);
   };
 
-  // --- Lógica del FAB Arrastrable ---
-  const [fabOffset, setFabOffset] = useState(0);
-  const dragInfo = useRef({ isDragging: false, startX: 0, initialOffset: 0, moved: false });
+  // --- Lógica del FAB Arrastrable Optimizada ---
+  const [fabX, setFabX] = useState(0);
+  const dragRef = useRef({ isDragging: false, startX: 0, currentX: 0, hasMoved: false });
 
-  const onFabDown = (e) => {
-    dragInfo.current.isDragging = true;
-    dragInfo.current.moved = false;
-    dragInfo.current.startX = e.clientX || e.touches?.[0]?.clientX;
-    dragInfo.current.initialOffset = fabOffset;
-    if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+  const startDrag = (clientX) => {
+    dragRef.current = { isDragging: true, startX: clientX - fabX, currentX: fabX, hasMoved: false };
   };
 
-  const onFabMove = (e) => {
-    if (!dragInfo.current.isDragging) return;
-    const currentX = e.clientX || e.touches?.[0]?.clientX;
-    const diff = currentX - dragInfo.current.startX;
-    if (Math.abs(diff) > 5) dragInfo.current.moved = true; 
-    
-    // Limitar el arrastre a la pantalla (izq: max ancho pantalla, der: 0 que es su pos original)
-    const maxLeft = typeof window !== "undefined" ? -window.innerWidth + 80 : -300;
-    const newOffset = Math.max(maxLeft, Math.min(0, dragInfo.current.initialOffset + diff));
-    setFabOffset(newOffset);
+  const onMove = (clientX) => {
+    if (!dragRef.current.isDragging) return;
+    const newX = clientX - dragRef.current.startX;
+    // Límite: No dejar que se salga por la izquierda de la pantalla, ni por la derecha (0 = pos original)
+    const boundedX = Math.min(0, Math.max(typeof window !== "undefined" ? -window.innerWidth + 80 : -300, newX));
+    if (Math.abs(boundedX - dragRef.current.currentX) > 5) dragRef.current.hasMoved = true;
+    setFabX(boundedX);
   };
 
-  const onFabUp = (e) => {
-    if (dragInfo.current.isDragging) {
-      dragInfo.current.isDragging = false;
-      if (e.target.releasePointerCapture) e.target.releasePointerCapture(e.pointerId);
-      
-      // Si no se movió apenas, se considera un click
-      if (!dragInfo.current.moved) {
-        setShowInputPanel(p => !p);
-      }
+  const stopDrag = () => {
+    if (!dragRef.current.isDragging) return;
+    dragRef.current.isDragging = false;
+    // Si lo hemos soltado sin apenas moverlo, cuenta como un "click" y abre el menú
+    if (!dragRef.current.hasMoved) {
+      setShowInputPanel(p => !p);
     }
   };
   // ------------------------------------
@@ -1770,16 +1746,20 @@ export default function App() {
       {showCoach   && <AICoachPanel onClose={()=>setShowCoach(false)} apiKey={apiKey} profile={profile} goals={goals} history={history} meals={meals} setGoals={setGoals} />}
       {showPlan    && <WeeklyPlanPanel onClose={()=>setShowPlan(false)} apiKey={apiKey} profile={profile} goals={goals} />}
 
-      {/* Futuristic FAB Arrastrable (Añadir comida) */}
+      {/* Futuristic FAB Arrastrable (Añadir comida) - AZUL INTERACTIVO */}
       <div 
-        onPointerDown={onFabDown}
-        onPointerMove={onFabMove}
-        onPointerUp={onFabUp}
-        onPointerCancel={onFabUp}
+        onTouchStart={(e) => startDrag(e.touches[0].clientX)}
+        onTouchMove={(e) => onMove(e.touches[0].clientX)}
+        onTouchEnd={stopDrag}
+        onMouseDown={(e) => startDrag(e.clientX)}
+        onMouseMove={(e) => onMove(e.clientX)}
+        onMouseUp={stopDrag}
+        onMouseLeave={stopDrag}
         style={{
           position: "fixed", bottom: "max(calc(env(safe-area-inset-bottom, 12px) + 70px), 82px)", right: "20px",
-          zIndex: "900", transform: `translateX(${fabOffset}px)`, touchAction: "none", // evita scroll al arrastrar
-          display: "flex", alignItems: "center", justifyContent: "center"
+          zIndex: "900", transform: `translateX(${fabX}px)`, touchAction: "none", 
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: "60px", height: "60px"
         }}
       >
         <button style={{
@@ -1788,11 +1768,11 @@ export default function App() {
           border: `2px solid ${C.cyan}`,
           boxShadow: `0 0 20px ${C.cyan}`,
           color: C.cyan, fontSize: "30px", fontWeight: "300",
-          cursor: dragInfo.current.isDragging ? "grabbing" : "grab", 
+          cursor: dragRef.current?.isDragging ? "grabbing" : "grab", 
           display: "flex", alignItems: "center", justifyContent: "center",
           backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
           animation: "fabPulse 3s infinite",
-          pointerEvents: "none" // para que los eventos pasen al div de arriba
+          pointerEvents: "none" // El div padre maneja todos los eventos
         }}>
           +
         </button>
@@ -1816,33 +1796,11 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD - Carrusel con Crossfade Inteligente (Sin fallos) */}
-        <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)", backgroundColor:"#1a1c23" }}>
+        {/* PREMIUM CALORIE CARD - Imagen estática por sesión con base de color anti-negro */}
+        <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)", backgroundColor:"#1c1c1e" }}>
             
-            {/* Capas de imágenes superpuestas (Ventana deslizante) */}
-            {BG_CAROUSEL.map((url, i) => {
-              // Solo mostramos (con opacity) la actual, para evitar problemas de parpadeo, todas están en el DOM pero ocultas
-              const isCurrent = i === bgIdx;
-              
-              return (
-                <div 
-                  key={url}
-                  style={{ 
-                    position:"absolute", 
-                    inset:0, 
-                    backgroundImage:`url(${url})`, 
-                    backgroundSize:"cover", 
-                    backgroundPosition:"center",
-                    opacity: isCurrent ? 1 : 0,
-                    transition: "opacity 1.5s ease-in-out",
-                    zIndex: 0
-                  }} 
-                />
-              );
-            })}
-
-            {/* Gradient Overlay for texture (siempre por encima de las fotos) */}
-            <div style={{ position:"absolute", inset:0, zIndex:1, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
+            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${bgImg})`, backgroundSize:"cover", backgroundPosition:"center" }} />
+            <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
 
             <div style={{ position:"relative", zIndex:10, display:"flex", justifyContent:"space-between" }}>
                 <div style={{ flex:1 }}>
@@ -1871,23 +1829,16 @@ export default function App() {
                 {/* Futuristic Neo Ring */}
                 <div style={{ position:"relative", width:120, height:120, display:"flex", alignItems:"center", justifyItems:"center", flexShrink:0 }}>
                     <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform:"rotate(-90deg)", filter:"drop-shadow(0 0 12px rgba(6, 182, 212, 0.6))" }}>
-                        {/* Define Gradient */}
                         <defs>
                           <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor={C.cyan} /> {/* Cyan */}
-                            <stop offset="100%" stopColor="#fbbf24" /> {/* Amber */}
+                            <stop offset="0%" stopColor={C.cyan} /> 
+                            <stop offset="100%" stopColor="#fbbf24" />
                           </linearGradient>
                         </defs>
-                        
-                        {/* Base Ring (Gray) */}
                         <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8"/>
-                        
-                        {/* Progress Ring (Gradient) */}
                         <circle cx="60" cy="60" r="50" fill="none" stroke="url(#ringGradient)" strokeWidth="8" strokeLinecap="round"
                           strokeDasharray="314" strokeDashoffset={`${314*(1-pct/100)}`}
                           style={{ transition:"stroke-dashoffset 0.8s ease" }}/>
-                          
-                        {/* Animated Flow Dots/Lines (Moving) */}
                         <path d="M 60 10 A 50 50 0 0 1 110 60" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="5 300" strokeDashoffset="0" style={{ animation: "ringFlow 1.5s linear infinite", opacity: 0.3 }}/>
                         <path d="M 10 60 A 50 50 0 0 1 60 110" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="8 250" strokeDashoffset="0" style={{ animation: "ringFlow 2s linear infinite", opacity: 0.15, animationDelay: "-0.5s" }}/>
                     </svg>
@@ -1902,21 +1853,21 @@ export default function App() {
           <PremiumMacroCard label="Grasas" value={totals.g} goal={goals.grasas} color={C.purple} bgUrl="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?q=80&w=400&auto=format&fit=crop" />
         </div>
 
-        {/* PREMIUM ACTION BAR (Sin el botón central) */}
+        {/* PREMIUM ACTION BAR (3 Botones limpios) */}
         <div style={{ display:"flex", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:6, marginBottom:24 }}>
           <button onClick={()=>setShowHealth(true)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
               <svg style={{ width:22, height:22, color:C.greenNeon, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10v4c0 3.3 2.7 6 6 6h6c3.3 0 6-2.7 6-6v-4M3 10V6c0-3.3 2.7-6 6-6h6c3.3 0 6 2.7 6 6v4M12 7v4M8 11h8"></path></svg>
-              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Escanear<br/>alimento</span>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Escanear</span>
           </button>
           <div style={{ width:1, background:C.border, margin:"8px 0" }} />
           <button onClick={()=>setTab("actividad")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
               <svg style={{ width:22, height:22, color:C.purple, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Ver<br/>análisis</span>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Análisis</span>
           </button>
           <div style={{ width:1, background:C.border, margin:"8px 0" }} />
           <button onClick={()=>setShowSet(true)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
               <svg style={{ width:22, height:22, color:C.greenNeon, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
-              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Definir<br/>objetivo</span>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Objetivos</span>
           </button>
         </div>
 
