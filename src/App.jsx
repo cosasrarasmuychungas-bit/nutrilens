@@ -14,12 +14,21 @@ const EMOJIS = ["☀️","🌤️","🌞","🌥️","🌙","🍳","🥗","🍱",
 const DAYS   = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
+// Carousel de imágenes relajantes para la tarjeta principal
+const BG_CAROUSEL = [
+  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop", // Montañas
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop", // Noche/Naturaleza
+  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop", // Paisaje oscuro
+  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop", // Lago relajante
+  "https://images.unsplash.com/photo-1599423300746-b62533397364?q=80&w=800&auto=format&fit=crop"  // Textura asfalto
+];
+
 const C = {
   bg:"#0a0a0b", surface:"#121214", surface2:"#1c1c1e", surface3:"#2c2c2e",
   border:"#27272a", border2:"#3f3f46",
   text:"#ffffff", text2:"#a1a1aa", text3:"#71717a",
   green:"#10b981", greenNeon:"#00ff66", yellow:"#eab308", orange:"#f97316",
-  red:"#ef4444", blue:"#3b82f6", amber:"#f59e0b", pink:"#ec4899", purple:"#a855f7",
+  red:"#ef4444", blue:"#3b82f6", amber:"#f59e0b", pink:"#ec4899", purple:"#a855f7", cyan:"#00b7ff",
   // Slot accent colors
   slotColors: {
     "Desayuno":"#f97316", "Almuerzo":"#eab308", "Comida":"#3b82f6",
@@ -171,7 +180,8 @@ async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
     : [{ type:"text", text:`Analiza: ${text}` }];
   return callClaude(apiKey,
     `Nutricionista experto. ${pCtx}
-REGLAS ESTRICTAS: La 'descripcion' DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Pollo a la plancha con patatas"). NUNCA des explicaciones ni detalles del cambio en la descripción. Los detalles de los alimentos van en la lista de ingredientes ("platos").
+REGLAS ESTRICTAS: cuenta exactamente lo visible, tamaños realistas. 
+La "descripcion" DEBE SER SOLO EL NOMBRE GENERAL DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con aguacate"). ESTÁ PROHIBIDO EXPLICAR NADA en la descripción.
 SOLO JSON en una línea sin backticks.
 Formato: {"platos":[{"nombre":"ingrediente exacto+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
 Sin comida: {"error":"No se detectó comida"}`,
@@ -1301,7 +1311,7 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
     }
   };
 
-  const sc=result?.puntuacion||0, circ=2*Math.PI*52;
+  const sc=result?.puntuacion||0, col=scoreColor(sc), circ=2*Math.PI*52;
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#000000f0", zIndex:300, overflowY:"auto" }}>
@@ -1334,6 +1344,7 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
               style={{ width:"100%", padding:"14px", background:`${C.blue}22`, border:`1px solid ${C.blue}55`, borderRadius:14, color:C.blue, fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
               <span style={{ fontSize:22 }}>📊</span><span>Escanear código de barras</span>
             </button>
+            <div style={{ fontSize:11, color:C.text3, marginTop:10 }}>Apunta la cámara al código y se detecta automáticamente</div>
           </div>
         )}
 
@@ -1401,25 +1412,18 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
                 <div style={{ position:"relative", width:120, height:120, flexShrink:0 }}>
                   <svg width="120" height="120" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="52" fill="none" stroke={C.surface2} strokeWidth="8"/>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#healthGradient)" strokeWidth="8"
+                    <circle cx="60" cy="60" r="52" fill="none" stroke={col} strokeWidth="8"
                       strokeDasharray={`${circ}`} strokeDashoffset={`${circ*(1-sc/100)}`}
                       strokeLinecap="round" transform="rotate(-90 60 60)" style={{ transition:"stroke-dashoffset 1s ease" }}/>
-                    <defs>
-                      <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#ef4444" />
-                        <stop offset="50%" stopColor="#eab308" />
-                        <stop offset="100%" stopColor="#00ff66" />
-                      </linearGradient>
-                    </defs>
                   </svg>
                   <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-                    <div style={{ fontSize:28, fontWeight:900, color:scoreColor(sc), lineHeight:1 }}>{sc}</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:col, lineHeight:1 }}>{sc}</div>
                     <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>/100</div>
                   </div>
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:11, color:C.text3, marginBottom:4 }}>{result.nombre}</div>
-                  <div style={{ fontSize:22, fontWeight:900, color:scoreColor(sc), marginBottom:6 }}>{result.categoria||(sc>=75?"Excelente":sc>=50?"Buena":sc>=30?"Regular":"Evitar")}</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:col, marginBottom:6 }}>{result.categoria||(sc>=75?"Excelente":sc>=50?"Buena":sc>=30?"Regular":"Evitar")}</div>
                   <div style={{ fontSize:13, color:C.text2, lineHeight:1.4 }}>{result.resumen}</div>
                 </div>
               </div>
@@ -1504,11 +1508,19 @@ export default function App() {
   const [voiceError,  setVoiceError]  = useState(null);
   
   const [showInputPanel, setShowInputPanel] = useState(false);
+  
+  // Estado para la imagen aleatoria de la tarjeta superior
+  const [bgImg, setBgImg] = useState("");
 
   const fileRef  = useRef();
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
+
+  useEffect(() => {
+    // Escoger imagen de fondo aleatoria al cargar la app
+    setBgImg(BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
+  }, []);
 
   useEffect(() => {
     const nh = { ...ls.get("nl-history") || {}, [todStr]: { meals, date:todStr } };
@@ -1539,6 +1551,43 @@ export default function App() {
     setGoals(newGoals);
     setSplash(false);
   };
+
+  // --- Lógica del FAB Arrastrable ---
+  const [fabOffset, setFabOffset] = useState(0);
+  const dragInfo = useRef({ isDragging: false, startX: 0, initialOffset: 0, moved: false });
+
+  const onFabDown = (e) => {
+    dragInfo.current.isDragging = true;
+    dragInfo.current.moved = false;
+    dragInfo.current.startX = e.clientX || e.touches?.[0]?.clientX;
+    dragInfo.current.initialOffset = fabOffset;
+    if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+  };
+
+  const onFabMove = (e) => {
+    if (!dragInfo.current.isDragging) return;
+    const currentX = e.clientX || e.touches?.[0]?.clientX;
+    const diff = currentX - dragInfo.current.startX;
+    if (Math.abs(diff) > 5) dragInfo.current.moved = true; 
+    
+    // Limitar el arrastre a la pantalla (izq: max ancho pantalla, der: 0 que es su pos original)
+    const maxLeft = typeof window !== "undefined" ? -window.innerWidth + 80 : -300;
+    const newOffset = Math.max(maxLeft, Math.min(0, dragInfo.current.initialOffset + diff));
+    setFabOffset(newOffset);
+  };
+
+  const onFabUp = (e) => {
+    if (dragInfo.current.isDragging) {
+      dragInfo.current.isDragging = false;
+      if (e.target.releasePointerCapture) e.target.releasePointerCapture(e.pointerId);
+      
+      // Si no se movió apenas, se considera un click
+      if (!dragInfo.current.moved) {
+        setShowInputPanel(p => !p);
+      }
+    }
+  };
+  // ------------------------------------
 
   if (!apiKey) return <SetupScreen onSave={saveApiKey} />;
   if (!profile) return <OnboardingFlow apiKey={apiKey} onDone={saveProfile} />;
@@ -1682,21 +1731,33 @@ export default function App() {
       {showCoach   && <AICoachPanel onClose={()=>setShowCoach(false)} apiKey={apiKey} profile={profile} goals={goals} history={history} meals={meals} setGoals={setGoals} />}
       {showPlan    && <WeeklyPlanPanel onClose={()=>setShowPlan(false)} apiKey={apiKey} profile={profile} goals={goals} />}
 
-      {/* Futuristic FAB (Añadir comida) - image_1.png */}
-      <button onClick={() => setShowInputPanel(p=>!p)} style={{
-        position: "fixed", bottom: "max(calc(env(safe-area-inset-bottom, 12px) + 70px), 82px)", right: "20px",
-        width: "60px", height: "60px", borderRadius: "50%",
-        background: "rgba(0, 0, 0, 0.4)",
-        border: `2px solid ${C.greenNeon}`,
-        boxShadow: `0 0 20px ${C.greenNeon}`,
-        color: C.greenNeon, fontSize: "30px", fontWeight: "300",
-        cursor: "pointer", zIndex: "900", // Overlay over everything
-        display: "flex", alignItems: "center", justifyContent: "center",
-        backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-        animation: "fabPulse 3s infinite",
-      }}>
-        +
-      </button>
+      {/* Futuristic FAB Arrastrable (Añadir comida) */}
+      <div 
+        onPointerDown={onFabDown}
+        onPointerMove={onFabMove}
+        onPointerUp={onFabUp}
+        onPointerCancel={onFabUp}
+        style={{
+          position: "fixed", bottom: "max(calc(env(safe-area-inset-bottom, 12px) + 70px), 82px)", right: "20px",
+          zIndex: "900", transform: `translateX(${fabOffset}px)`, touchAction: "none", // evita scroll al arrastrar
+          display: "flex", alignItems: "center", justifyContent: "center"
+        }}
+      >
+        <button style={{
+          width: "60px", height: "60px", borderRadius: "50%",
+          background: "rgba(0, 0, 0, 0.4)",
+          border: `2px solid ${C.cyan}`,
+          boxShadow: `0 0 20px ${C.cyan}`,
+          color: C.cyan, fontSize: "30px", fontWeight: "300",
+          cursor: dragInfo.current.isDragging ? "grabbing" : "grab", 
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+          animation: "fabPulse 3s infinite",
+          pointerEvents: "none" // para que los eventos pasen al div de arriba
+        }}>
+          +
+        </button>
+      </div>
 
       {/* HEADER */}
       <div style={{ position:"sticky", top:0, zIndex:100, background:"rgba(10,10,11,0.85)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", paddingTop:"max(env(safe-area-inset-top,20px),20px)", paddingBottom:16, paddingLeft:20, paddingRight:20 }}>
@@ -1716,10 +1777,10 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD - image_866bd7.png */}
+        {/* PREMIUM CALORIE CARD - Carrusel Random */}
         <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
-            {/* Dark Concrete Texture Background */}
-            <div style={{ position:"absolute", inset:0, backgroundImage:`url(https://images.unsplash.com/photo-1599423300746-b62533397364?q=80&w=800&auto=format&fit=crop)`, backgroundSize:"cover", backgroundPosition:"center" }} />
+            {/* Dynamic Carousel Texture Background */}
+            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${bgImg})`, backgroundSize:"cover", backgroundPosition:"center", transition: "background-image 0.5s ease" }} />
             {/* Gradient Overlay for texture */}
             <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
 
@@ -1731,8 +1792,8 @@ export default function App() {
                         <span style={{ fontSize:14, color:C.text2, fontWeight:600 }}>kcal</span>
                     </div>
                     <div style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", background:"rgba(0,183,255,0.1)", border:"1px solid rgba(0,183,255,0.2)", borderRadius:100, marginTop:12 }}>
-                        <span style={{ color:"#00b7ff", fontSize:12 }}>✓</span>
-                        <span style={{ color:"#00b7ff", fontSize:11, fontWeight:700 }}>{Math.round(pct)}% de tu objetivo</span>
+                        <span style={{ color:C.cyan, fontSize:12 }}>✓</span>
+                        <span style={{ color:C.cyan, fontSize:11, fontWeight:700 }}>{Math.round(pct)}% de tu objetivo</span>
                     </div>
 
                     <div style={{ display:"flex", gap:24, marginTop:24 }}>
@@ -1753,7 +1814,7 @@ export default function App() {
                         {/* Define Gradient */}
                         <defs>
                           <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#06b6d4" /> {/* Cyan */}
+                            <stop offset="0%" stopColor={C.cyan} /> {/* Cyan */}
                             <stop offset="100%" stopColor="#fbbf24" /> {/* Amber */}
                           </linearGradient>
                         </defs>
@@ -1781,16 +1842,11 @@ export default function App() {
           <PremiumMacroCard label="Grasas" value={totals.g} goal={goals.grasas} color={C.purple} bgUrl="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?q=80&w=400&auto=format&fit=crop" />
         </div>
 
-        {/* PREMIUM ACTION BAR */}
+        {/* PREMIUM ACTION BAR (Sin el botón central) */}
         <div style={{ display:"flex", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:6, marginBottom:24 }}>
           <button onClick={()=>setShowHealth(true)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
               <svg style={{ width:22, height:22, color:C.greenNeon, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10v4c0 3.3 2.7 6 6 6h6c3.3 0 6-2.7 6-6v-4M3 10V6c0-3.3 2.7-6 6-6h6c3.3 0 6 2.7 6 6v4M12 7v4M8 11h8"></path></svg>
               <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Escanear<br/>alimento</span>
-          </button>
-          <div style={{ width:1, background:C.border, margin:"8px 0" }} />
-          <button onClick={() => setShowInputPanel(p=>!p)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
-              <svg style={{ width:22, height:22, color:C.blue, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Añadir<br/>comida</span>
           </button>
           <div style={{ width:1, background:C.border, margin:"8px 0" }} />
           <button onClick={()=>setTab("actividad")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
@@ -1923,10 +1979,10 @@ export default function App() {
                         <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>TOTAL CONSUMIDO</div>
                         <div style={{ fontSize:18, fontWeight:900, color:C.text }}>{Math.round(totals.cal)} <span style={{ fontSize:12, color:C.text3, fontWeight:500 }}>kcal</span></div>
                     </div>
-                    <div style={{ width:40, height:40, borderRadius:"50%", background:`rgba(0,255,102,0.1)`, display:"flex", alignItems:"center", justifyContent:"center", color:C.greenNeon, fontSize:18, flexShrink:0 }}>🔥</div>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background:`rgba(0,183,255,0.1)`, display:"flex", alignItems:"center", justifyContent:"center", color:C.cyan, fontSize:18, flexShrink:0 }}>🔥</div>
                     <div style={{ textAlign:"center", flex:1 }}>
                         <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>TE FALTAN</div>
-                        <div style={{ fontSize:18, fontWeight:900, color:C.greenNeon }}>{Math.max(0, remaining)} <span style={{ fontSize:12, color:C.greenNeon, fontWeight:500 }}>kcal</span></div>
+                        <div style={{ fontSize:18, fontWeight:900, color:C.cyan }}>{Math.max(0, remaining)} <span style={{ fontSize:12, color:C.cyan, fontWeight:500 }}>kcal</span></div>
                     </div>
                 </div>
               </div>
@@ -1934,7 +1990,7 @@ export default function App() {
               <div style={{ textAlign:"center", padding:"32px 20px", background:C.surface, borderRadius:24, border:`1px solid ${C.border}`, marginBottom:24 }}>
                 <div style={{ fontSize:40, marginBottom:8, opacity:0.8 }}>🍽️</div>
                 <div style={{ fontSize:15, fontWeight:700, color:C.text2, marginBottom:6 }}>Sin comidas hoy</div>
-                <div style={{ fontSize:13, color:C.text3 }}>Usa el botón "Añadir comida" para empezar</div>
+                <div style={{ fontSize:13, color:C.text3 }}>Usa el botón "+" abajo para empezar</div>
               </div>
             )}
 
@@ -1943,12 +1999,12 @@ export default function App() {
                 <div style={{ position:"absolute", inset:0, backgroundImage:`url(https://images.unsplash.com/photo-1548839140-29a749e1bc4e?q=80&w=600&auto=format&fit=crop)`, backgroundSize:"cover", backgroundPosition:"center" }} />
                 <div style={{ position:"absolute", inset:0, background:`linear-gradient(to right, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.4) 100%)` }} />
                 <div style={{ position:"relative", zIndex:10, maxWidth:"70%" }}>
-                    <div style={{ fontSize:10, color:C.greenNeon, fontWeight:800, letterSpacing:1, marginBottom:4 }}>CONSEJO DEL DÍA</div>
+                    <div style={{ fontSize:10, color:C.cyan, fontWeight:800, letterSpacing:1, marginBottom:4 }}>CONSEJO DEL DÍA</div>
                     <div style={{ fontSize:16, fontWeight:900, color:C.text, marginBottom:4, lineHeight:1.2 }}>Hidratación<br/>inteligente</div>
                     <div style={{ fontSize:11, color:C.text2, lineHeight:1.4 }}>Bebe al menos 2L de agua al día para mejorar tu rendimiento y bienestar.</div>
                 </div>
                 <div style={{ position:"relative", zIndex:10 }}>
-                    <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(0,255,102,0.2)", border:"1px solid rgba(0,255,102,0.3)", display:"flex", alignItems:"center", justifyContent:"center", color:C.greenNeon }}>➔</div>
+                    <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(0,183,255,0.2)", border:"1px solid rgba(0,183,255,0.3)", display:"flex", alignItems:"center", justifyContent:"center", color:C.cyan }}>➔</div>
                 </div>
             </div>
           </>
@@ -2043,7 +2099,7 @@ export default function App() {
                 <div style={{ ...S.card, marginBottom:12 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
                     <div style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:22, fontWeight:900, color:ringColor(selDayTotals.cal/goals.calorias*100) }}>{Math.round(selDayTotals.cal) }</div>
+                      <div style={{ fontSize:22, fontWeight:900, color:ringColor(selDayTotals.cal/goals.calorias*100) }}>{Math.round(selDayTotals.cal)}</div>
                       <div style={{ fontSize:10, color:C.text3 }}>kcal</div>
                     </div>
                     {[["P",selDayTotals.p,C.blue],["C",selDayTotals.c,C.amber],["G",selDayTotals.g,C.pink]].map(([l,v,col]) => (
@@ -2096,9 +2152,9 @@ export default function App() {
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(10,10,11,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"10px 8px", paddingBottom:"max(env(safe-area-inset-bottom,12px),12px)", display:"flex", justifyContent:"space-between", zIndex:100 }}>
         {/* Hoy */}
         <button onClick={()=>setTab("hoy")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
-          <svg style={{ width:24, height:24, color:tab==="hoy"?C.greenNeon:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          <svg style={{ width:24, height:24, color:tab==="hoy"?C.cyan:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 001 1m-6 0h6"></path></svg>
           <span style={{ fontSize:10, fontWeight: tab==="hoy" ? 700 : 500, color: tab==="hoy" ? C.text : C.text3 }}>Hoy</span>
-          {tab==="hoy" && <div style={{ position:"absolute", bottom:0, width:30, height:3, background:C.greenNeon, borderRadius:"4px 4px 0 0", boxShadow:`0 -2px 8px ${C.greenNeon}` }} />}
+          {tab==="hoy" && <div style={{ position:"absolute", bottom:0, width:30, height:3, background:C.cyan, borderRadius:"4px 4px 0 0", boxShadow:`0 -2px 8px ${C.cyan}` }} />}
         </button>
         {/* Actividad */}
         <button onClick={()=>setTab("actividad")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
@@ -2125,7 +2181,7 @@ export default function App() {
       <style>{`
         @keyframes spin      { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
         @keyframes pulse     { 0%,100%{box-shadow:0 0 0 8px ${C.red}33,0 0 0 16px ${C.red}11;}50%{box-shadow:0 0 0 12px ${C.red}44,0 0 0 24px ${C.red}11;} }
-        @keyframes fabPulse   { 0%, 100% { transform: scale(1); box-shadow: 0 0 20px ${C.greenNeon}; } 50% { transform: scale(1.08); box-shadow: 0 0 30px ${C.greenNeon}; } }
+        @keyframes fabPulse   { 0%, 100% { transform: scale(1); box-shadow: 0 0 20px ${C.cyan}; } 50% { transform: scale(1.08); box-shadow: 0 0 30px ${C.cyan}; } }
         @keyframes ringFlow   { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -350; } }
         @keyframes fadeIn    { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);} }
         @keyframes shimmerBar{ 0%{transform:translateX(-200%);}100%{transform:translateX(300%);} }
