@@ -14,7 +14,7 @@ const EMOJIS = ["☀️","🌤️","🌞","🌥️","🌙","🍳","🥗","🍱",
 const DAYS   = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-// 20 Imágenes de fondo relajantes y oscuras (Naturaleza, niebla, noche, montañas)
+// 20 Imágenes de fondo relajantes y oscuras (Montañas, niebla, noche, texturas)
 const BG_CAROUSEL = [
   "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop",
@@ -191,15 +191,20 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
 async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
   const pCtx = profile ? `Usuario: objetivo=${profile.objetivo||"salud"}, dieta=${profile.dieta||"sin restricciones"}, restricciones=${profile.restricciones||"ninguna"}, peso=${profile.peso||75}kg.` : "";
   const userContent = base64
-    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza con máxima precisión." }]
+    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza con máxima precisión y rigor nutricional." }]
     : [{ type:"text", text:`Analiza: ${text}` }];
   return callClaude(apiKey,
-    `Nutricionista experto. ${pCtx}
-REGLAS ESTRICTAS: cuenta exactamente lo visible, tamaños realistas. 
-La "descripcion" DEBE SER SOLO EL NOMBRE GENERAL DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con aguacate"). ESTÁ PROHIBIDO EXPLICAR NADA en la descripción.
-SOLO JSON en una línea sin backticks.
-Formato: {"platos":[{"nombre":"ingrediente exacto+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
-Sin comida: {"error":"No se detectó comida"}`,
+    `Eres una IA nutricionista de élite. Analiza la imagen o texto con MÁXIMA PRECISIÓN. ${pCtx}
+REGLAS ESTRICTAS DE ANÁLISIS:
+1. Identifica CADA ingrediente visible. Sé deductivo: si ves una salsa, suma gramos de aceite/grasa. Si está frito, asume aceite absorbido.
+2. Estima cantidades en gramos de forma realista basándote en la porción visual (ej: una cucharada de aceite son 15g, una rebanada de pan normal son 30-40g).
+3. Calcula macros exactos según bases de datos oficiales (USDA).
+4. La propiedad "descripcion" DEBE SER SOLO UN NOMBRE GENÉRICO DEL PLATO, ULTRA CORTO (máx 4 palabras, ej: "Pollo con arroz y verduras"). CERO EXPLICACIONES EN ESTE CAMPO.
+5. En la propiedad "nombre" de cada plato, pon el ingrediente y los gramos que has deducido (ej: "Pechuga de pollo (150g)").
+RESPONDE SÓLO CON UN JSON VÁLIDO EN UNA LÍNEA (sin markdown, sin comillas invertidas, sin texto previo ni posterior).
+FORMATO EXACTO:
+{"platos":[{"nombre":"ingrediente exacto (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
+Si NO detectas comida en absoluto: {"error":"No se detectó comida en la imagen."}`,
     userContent, 1000);
 }
 
@@ -818,10 +823,13 @@ function MealCard({ meal, onDelete, onUpdate, apiKey, slots, profile, goals, isL
     try {
       const ctx = profile && goals ? buildCtx(profile, goals, [meal], {}) : "";
       const result = await callClaude(apiKey,
-        `Nutricionista. Corrige la comida según la instrucción. ${ctx}
-REGLA ESTRICTA: La 'descripcion' DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con mermelada"). NUNCA des explicaciones ni detalles del cambio en la descripción. Los detalles de los alimentos van en la lista de ingredientes ("platos").
+        `Nutricionista experto. Corrige la comida según la instrucción del usuario. ${ctx}
+REGLAS ESTRICTAS:
+1. Ajusta los gramos y macros proporcionalmente al cambio solicitado.
+2. La 'descripcion' DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4 palabras). NUNCA des explicaciones en la descripción.
+3. Los detalles van en la lista de "platos" con sus gramos (ej: "Avena (40g)").
 SOLO JSON en una línea sin backticks.
-Formato: {"platos":[{"nombre":"nombre exacto modificado+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto"}`,
+Formato: {"platos":[{"nombre":"ingrediente modificado (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"plato ultra corto"}`,
         [{ type:"text", text:`Comida actual: ${meal.descripcion}. Ingredientes: ${(meal.platos||[]).map(p=>`${p.nombre}(${p.calorias}kcal)`).join(", ")}. Instrucción del usuario para corregir: ${chatMsg.trim()}` }], 800);
       if (!result.error && result.platos) {
         onUpdate({ ...meal, ...result, totalCalorias: result.totalCalorias||0, totalProteinas: result.totalProteinas||0, totalCarbohidratos: result.totalCarbohidratos||0, totalGrasas: result.totalGrasas||0 });
@@ -1531,18 +1539,28 @@ export default function App() {
   
   const [showInputPanel, setShowInputPanel] = useState(false);
   
-  // Estado para la imagen aleatoria de la tarjeta superior, inicializado con fallback de color en el DOM
-  const [bgImg, setBgImg] = useState("");
+  // Lógica Robusta del Carrusel
+  const [bgIdx, setBgIdx] = useState(() => Math.floor(Math.random() * BG_CAROUSEL.length));
+
+  useEffect(() => {
+    // Calcular la siguiente foto
+    const nextIdx = (bgIdx + 1) % BG_CAROUSEL.length;
+    // Pre-cargar la siguiente imagen de forma invisible en el navegador
+    const img = new Image();
+    img.src = BG_CAROUSEL[nextIdx];
+    
+    // Cambiar la imagen actual cada 15 segundos
+    const timer = setTimeout(() => {
+      setBgIdx(nextIdx);
+    }, 15000);
+    
+    return () => clearTimeout(timer);
+  }, [bgIdx]);
 
   const fileRef  = useRef();
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
-
-  useEffect(() => {
-    // Escoger imagen de fondo aleatoria inmediatamente tras el render
-    setBgImg(BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
-  }, []);
 
   useEffect(() => {
     const nh = { ...ls.get("nl-history") || {}, [todStr]: { meals, date:todStr } };
@@ -1802,7 +1820,7 @@ export default function App() {
         {/* PREMIUM CALORIE CARD - Carrusel Random con Fallback */}
         <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
             {/* Dynamic Carousel Texture Background con color de fallback para evitar el negro absoluto */}
-            <div style={{ position:"absolute", inset:0, backgroundColor:"#1a1c23", backgroundImage: bgImg ? `url(${bgImg})` : "none", backgroundSize:"cover", backgroundPosition:"center", transition: "background-image 0.5s ease" }} />
+            <div style={{ position:"absolute", inset:0, backgroundColor:"#1a1c23", backgroundImage: `url(${BG_CAROUSEL[bgIdx]})`, backgroundSize:"cover", backgroundPosition:"center", transition: "background-image 0.8s ease-in-out" }} />
             {/* Gradient Overlay for texture */}
             <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
 
@@ -2174,7 +2192,7 @@ export default function App() {
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(10,10,11,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"10px 8px", paddingBottom:"max(env(safe-area-inset-bottom,12px),12px)", display:"flex", justifyContent:"space-between", zIndex:100 }}>
         {/* Hoy */}
         <button onClick={()=>setTab("hoy")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
-          <svg style={{ width:24, height:24, color:tab==="hoy"?C.cyan:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          <svg style={{ width:24, height:24, color:tab==="hoy"?C.cyan:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 001 1m-6 0h6"></path></svg>
           <span style={{ fontSize:10, fontWeight: tab==="hoy" ? 700 : 500, color: tab==="hoy" ? C.text : C.text3 }}>Hoy</span>
           {tab==="hoy" && <div style={{ position:"absolute", bottom:0, width:30, height:3, background:C.cyan, borderRadius:"4px 4px 0 0", boxShadow:`0 -2px 8px ${C.cyan}` }} />}
         </button>
