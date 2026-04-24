@@ -167,7 +167,7 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: userContent }],
@@ -343,9 +343,15 @@ function OnboardingFlow({ apiKey, onDone }) {
 
     if (isLast) {
       setGenerating(true);
+      let done = false;
+      const finish = (prof) => {
+        if (done) return;
+        done = true;
+        onDone(prof); // Triggers component unmount — do NOT update state after this
+      };
       try {
         setGenStatus("Calculando tu metabolismo basal...");
-        await new Promise(r => setTimeout(r, 800));
+        await new Promise(r => setTimeout(r, 600));
         setGenStatus("Analizando tu perfil completo...");
         const profileStr = Object.entries(newAnswers).map(([k,v])=>`${k}: ${v}`).join(", ");
         const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -353,9 +359,9 @@ function OnboardingFlow({ apiKey, onDone }) {
           headers:{ "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
           body: JSON.stringify({
             model:"claude-haiku-4-5-20251001", max_tokens:600,
-            system:`Eres nutricionista experto. Calcula con precisión los objetivos nutricionales diarios usando la fórmula Mifflin-St Jeor y el factor de actividad correcto. Responde SOLO con JSON en una línea sin backticks.
-Formato: {"calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número,"tmb":número,"tdee":número,"pasosObjetivo":número,"caloriasQuemar":número,"resumen":"frase motivadora 1 línea personalizada con su nombre","consejo":"consejo nutricional clave específico para su objetivo"}`,
-            messages:[{ role:"user", content:`Perfil completo: ${profileStr}. Calcula: TMB con Mifflin-St Jeor, TDEE según actividad, calorías diarias según objetivo y ritmo, macros según tipo de dieta preferida, pasos diarios recomendados y calorías a quemar con ejercicio.` }]
+            system:`Eres nutricionista experto. Calcula objetivos nutricionales diarios con la fórmula Mifflin-St Jeor. Responde SOLO con JSON en una línea sin backticks ni markdown.
+Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,"grasas":número,"tmb":número,"tdee":número,"pasosObjetivo":número,"caloriasQuemar":número,"resumen":"frase motivadora corta","consejo":"consejo nutricional específico"}`,
+            messages:[{ role:"user", content:`Perfil: ${profileStr}. Calcula TMB (Mifflin-St Jeor), TDEE (factor actividad), calorías objetivo (ajustado por meta y ritmo), macros, pasos y kcal a quemar. Todos los valores deben ser números enteros.` }]
           })
         });
         setGenStatus("Generando tu plan personalizado...");
@@ -367,25 +373,24 @@ Formato: {"calorias":número,"proteinas":número,"carbohidratos":número,"grasas
           const match = clean.match(/\{[\s\S]*\}/);
           parsed = JSON.parse(match ? match[0] : clean);
         } catch {}
-        const profile = {
+        const fb = calcFallback(newAnswers);
+        const finalProfile = {
           ...newAnswers,
-          calorias:      parsed.calorias      || calcFallback(newAnswers).calorias,
-          proteinas:     parsed.proteinas     || calcFallback(newAnswers).proteinas,
-          carbohidratos: parsed.carbohidratos || calcFallback(newAnswers).carbohidratos,
-          grasas:        parsed.grasas        || calcFallback(newAnswers).grasas,
-          tmb:           parsed.tmb           || 0,
-          tdee:          parsed.tdee          || 0,
-          pasosObjetivo: parsed.pasosObjetivo || 8000,
-          caloriasQuemar:parsed.caloriasQuemar|| 300,
-          resumen:       parsed.resumen       || "¡Tu plan está listo, a por ello!",
-          consejo:       parsed.consejo       || "La constancia es la clave del éxito.",
+          calorias:      parseInt(parsed.calorias)      || fb.calorias,
+          proteinas:     parseInt(parsed.proteinas)     || fb.proteinas,
+          carbohidratos: parseInt(parsed.carbohidratos) || fb.carbohidratos,
+          grasas:        parseInt(parsed.grasas)        || fb.grasas,
+          tmb:           parseInt(parsed.tmb)           || fb.tmb,
+          tdee:          parseInt(parsed.tdee)          || fb.tdee,
+          pasosObjetivo: parseInt(parsed.pasosObjetivo) || 8000,
+          caloriasQuemar:parseInt(parsed.caloriasQuemar)|| 300,
+          resumen:       parsed.resumen  || "¡Tu plan está listo, a por ello!",
+          consejo:       parsed.consejo  || "La constancia es la clave del éxito.",
         };
-        setGenStatus("¡Listo! Abriendo tu plan...");
-        await new Promise(r => setTimeout(r, 500));
-        onDone(profile);
+        finish(finalProfile);
       } catch(e) {
         const fb = calcFallback(newAnswers);
-        onDone({ ...newAnswers, ...fb, resumen:"¡Tu plan está listo!", consejo:"La constancia es la clave." });
+        finish({ ...newAnswers, ...fb, resumen:"¡Tu plan está listo!", consejo:"La constancia es la clave." });
       }
     } else {
       setStep(p => p + 1);
@@ -553,7 +558,7 @@ function AICoachPanel({ onClose, apiKey, profile, goals, history, meals }) {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
         headers:{ "Content-Type":"application/json", "x-api-key":apiKey, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
-        body: JSON.stringify({ model:"claude-sonnet-4-5-20250929", max_tokens:300,
+        body: JSON.stringify({ model:"claude-haiku-4-5-20251001", max_tokens:300,
           system:`Eres NutriCoach, el coach nutricional personal y amigable del usuario. Responde en texto plano conversacional, directo y motivador en español. Máximo 3-4 frases. Contexto: ${ctx}`,
           messages:[{ role:"user", content:`${historial}\nUsuario: ${userMsg}` }]
         })
@@ -1474,14 +1479,21 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
 export default function App() {
   const [apiKey,      setApiKey]      = useState(() => ls.get("nl-apikey") || "");
   const [profile,     setProfile]     = useState(() => ls.get("nl-profile") || null);
-  const [splash,      setSplash]      = useState(true);
+  // Splash only shows if user already had a profile (returning user), NOT after fresh onboarding
+  const [splash,      setSplash]      = useState(() => !!ls.get("nl-profile"));
   const [showCoach,   setShowCoach]   = useState(false);
   const [showPlan,    setShowPlan]    = useState(false);
   const [meals,       setMeals]       = useState(() => {
     const h = ls.get("nl-history") || {};
     return h[today()]?.meals || [];
   });
-  const [goals,       setGoals]       = useState(() => ls.get("nl-goals") || DEFAULT_GOALS);
+  const [goals,       setGoals]       = useState(() => {
+    const saved = ls.get("nl-goals");
+    if (saved) return saved;
+    const prof = ls.get("nl-profile");
+    if (prof?.calorias) return { calorias:parseInt(prof.calorias)||2000, proteinas:parseInt(prof.proteinas)||150, carbohidratos:parseInt(prof.carbohidratos)||220, grasas:parseInt(prof.grasas)||65 };
+    return DEFAULT_GOALS;
+  });
   const [slots,       setSlots]       = useState(() => ls.get("nl-slots") || DEFAULT_MEALS);
   const [selSlot,     setSelSlot]     = useState(DEFAULT_MEALS[2].id);
   const [analyzing,   setAnalyzing]   = useState(false);
@@ -1519,14 +1531,25 @@ export default function App() {
   const saveApiKey = (key) => { ls.set("nl-apikey", key); setApiKey(key); };
   const resetApiKey = () => { ls.set("nl-apikey", ""); setApiKey(""); };
   const saveProfile = (p) => {
-    // Ensure all required fields have fallback values
     const safe = {
       calorias: 2000, proteinas: 150, carbohidratos: 220, grasas: 65,
-      pasosObjetivo: 8000, caloriasQuemar: 300, ...p
+      pasosObjetivo: 8000, caloriasQuemar: 300, ...p,
+      // Ensure numeric types
+      calorias:      parseInt(p.calorias)      || 2000,
+      proteinas:     parseInt(p.proteinas)     || 150,
+      carbohidratos: parseInt(p.carbohidratos) || 220,
+      grasas:        parseInt(p.grasas)        || 65,
+      pasosObjetivo: parseInt(p.pasosObjetivo) || 8000,
+      caloriasQuemar:parseInt(p.caloriasQuemar)|| 300,
     };
+    const newGoals = { calorias:safe.calorias, proteinas:safe.proteinas, carbohidratos:safe.carbohidratos, grasas:safe.grasas };
+    // Save both to localStorage directly (don't rely on effects)
     ls.set("nl-profile", safe);
+    ls.set("nl-goals", newGoals);
+    // Update React state
     setProfile(safe);
-    setGoals({ calorias: safe.calorias, proteinas: safe.proteinas, carbohidratos: safe.carbohidratos, grasas: safe.grasas });
+    setGoals(newGoals);
+    setSplash(false); // Skip splash after onboarding — user doesn't need to see it
   };
 
   // Show setup screen if no API key
