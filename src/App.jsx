@@ -14,13 +14,28 @@ const EMOJIS = ["☀️","🌤️","🌞","🌥️","🌙","🍳","🥗","🍱",
 const DAYS   = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-// Carousel de imágenes relajantes para la tarjeta principal
+// 20 Imágenes de fondo relajantes y oscuras (Naturaleza, niebla, noche, montañas)
 const BG_CAROUSEL = [
-  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop", // Montañas
-  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop", // Noche/Naturaleza
-  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop", // Paisaje oscuro
-  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop", // Lago relajante
-  "https://images.unsplash.com/photo-1599423300746-b62533397364?q=80&w=800&auto=format&fit=crop"  // Textura asfalto
+  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1476820865390-c52aeebb9891?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1500534623283-258267364177?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1497449985806-ea5978a63ce5?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1418065460487-3ce7eb3694f4?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1504280365736-233bb9fa4c7b?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1428908728789-d2de8ae1e5e8?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1503195232765-a83d73db3900?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1439853949703-ff5a8d2503aa?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1458668383970-45f4df210515?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop"
 ];
 
 const C = {
@@ -1516,13 +1531,18 @@ export default function App() {
   
   const [showInputPanel, setShowInputPanel] = useState(false);
   
-  // Estado para la imagen aleatoria de la tarjeta superior (inicializada de inmediato)
-  const [bgImg] = useState(() => BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
+  // Estado para la imagen aleatoria de la tarjeta superior, inicializado con fallback de color en el DOM
+  const [bgImg, setBgImg] = useState("");
 
   const fileRef  = useRef();
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
+
+  useEffect(() => {
+    // Escoger imagen de fondo aleatoria inmediatamente tras el render
+    setBgImg(BG_CAROUSEL[Math.floor(Math.random() * BG_CAROUSEL.length)]);
+  }, []);
 
   useEffect(() => {
     const nh = { ...ls.get("nl-history") || {}, [todStr]: { meals, date:todStr } };
@@ -1779,10 +1799,10 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD - Carrusel Random */}
+        {/* PREMIUM CALORIE CARD - Carrusel Random con Fallback */}
         <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
-            {/* Dynamic Carousel Texture Background */}
-            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${bgImg})`, backgroundSize:"cover", backgroundPosition:"center", transition: "background-image 0.5s ease" }} />
+            {/* Dynamic Carousel Texture Background con color de fallback para evitar el negro absoluto */}
+            <div style={{ position:"absolute", inset:0, backgroundColor:"#1a1c23", backgroundImage: bgImg ? `url(${bgImg})` : "none", backgroundSize:"cover", backgroundPosition:"center", transition: "background-image 0.5s ease" }} />
             {/* Gradient Overlay for texture */}
             <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
 
@@ -2154,7 +2174,7 @@ export default function App() {
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(10,10,11,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"10px 8px", paddingBottom:"max(env(safe-area-inset-bottom,12px),12px)", display:"flex", justifyContent:"space-between", zIndex:100 }}>
         {/* Hoy */}
         <button onClick={()=>setTab("hoy")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
-          <svg style={{ width:24, height:24, color:tab==="hoy"?C.cyan:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 001 1m-6 0h6"></path></svg>
+          <svg style={{ width:24, height:24, color:tab==="hoy"?C.cyan:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
           <span style={{ fontSize:10, fontWeight: tab==="hoy" ? 700 : 500, color: tab==="hoy" ? C.text : C.text3 }}>Hoy</span>
           {tab==="hoy" && <div style={{ position:"absolute", bottom:0, width:30, height:3, background:C.cyan, borderRadius:"4px 4px 0 0", boxShadow:`0 -2px 8px ${C.cyan}` }} />}
         </button>
