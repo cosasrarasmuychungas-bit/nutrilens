@@ -15,15 +15,15 @@ const DAYS   = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 const C = {
-  bg:"#000000", surface:"#0f0f0f", surface2:"#181818", surface3:"#1e1e1e",
-  border:"#252525", border2:"#2a2a2a",
-  text:"#ffffff", text2:"#c0c0c0", text3:"#606060",
-  green:"#22c55e", yellow:"#eab308", orange:"#f97316",
-  red:"#ef4444", blue:"#4A90D9", amber:"#f59e0b", pink:"#ec4899",
+  bg:"#0a0a0b", surface:"#121214", surface2:"#1c1c1e", surface3:"#2c2c2e",
+  border:"#27272a", border2:"#3f3f46",
+  text:"#ffffff", text2:"#a1a1aa", text3:"#71717a",
+  green:"#10b981", greenNeon:"#00ff66", yellow:"#eab308", orange:"#f97316",
+  red:"#ef4444", blue:"#3b82f6", amber:"#f59e0b", pink:"#ec4899", purple:"#a855f7",
   // Slot accent colors
   slotColors: {
-    "Desayuno":"#f97316", "Almuerzo":"#eab308", "Comida":"#22c55e",
-    "Merienda":"#a855f7", "Cena":"#3b82f6",
+    "Desayuno":"#f97316", "Almuerzo":"#eab308", "Comida":"#3b82f6",
+    "Merienda":"#a855f7", "Cena":"#ec4899",
   },
 };
 
@@ -31,7 +31,7 @@ const C = {
 const getStatusBadge = (pct, remaining) => {
   if (pct === 0) return null;
   if (remaining < -100) return { label:"🚀 Superado", color:C.red };
-  if (remaining < 100)  return { label:"🎯 En objetivo", color:C.green };
+  if (remaining < 100)  return { label:"🎯 En objetivo", color:C.greenNeon };
   if (pct > 60)         return { label:"⚡ En camino", color:C.amber };
   return { label:"💪 Empieza ya", color:C.text3 };
 };
@@ -54,7 +54,7 @@ const slotColor = (slotLabel) => C.slotColors[slotLabel] || C.blue;
 
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const ringColor = (pct) => pct < 50 ? C.green : pct < 80 ? C.yellow : pct < 100 ? C.orange : C.red;
+const ringColor = (pct) => pct < 50 ? C.greenNeon : pct < 80 ? C.yellow : pct < 100 ? C.orange : C.red;
 
 const getGreeting = () => {
   const h = new Date().getHours();
@@ -68,7 +68,7 @@ const getDateStr = () => {
   const d = new Date();
   const days = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
   const months = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  return `${days[d.getDay()]} ${d.getDate()} de ${months[d.getMonth()]}`;
+  return `${days[d.getDay()]}, ${d.getDate()} de ${months[d.getMonth()]}`;
 };
 
 const S = {
@@ -97,11 +97,11 @@ function SplashScreen({ onDone }) {
       pointerEvents: fading ? "none" : "all",
     }}>
       <div style={{ animation:"splashLogo 1.2s cubic-bezier(.34,1.56,.64,1) forwards" }}>
-        <img src="/icon-512.png" alt="NutriLens" style={{ width:110, height:110, borderRadius:26, display:"block", boxShadow:`0 20px 60px ${C.blue}44` }} />
+        <img src="/icon-512.png" alt="NutriLens" style={{ width:110, height:110, borderRadius:26, display:"block", boxShadow:`0 20px 60px ${C.greenNeon}22` }} />
       </div>
       <div style={{ animation:"splashText 1.4s ease forwards", marginTop:18, textAlign:"center" }}>
         <div style={{ fontSize:26, fontWeight:900, letterSpacing:-0.5, color:C.text }}>NutriLens</div>
-        <div style={{ fontSize:12, color:C.blue, fontWeight:700, marginTop:4, letterSpacing:3, textTransform:"uppercase" }}>IA</div>
+        <div style={{ fontSize:12, color:C.greenNeon, fontWeight:700, marginTop:4, letterSpacing:3, textTransform:"uppercase" }}>IA</div>
       </div>
       <style>{`
         @keyframes splashLogo {
@@ -125,16 +125,14 @@ const ls = {
       localStorage.setItem(key, JSON.stringify(val));
       return true;
     } catch (e) {
-      // Quota exceeded — try to free space by stripping old thumbnails
       if (key === "nl-history" && val && typeof val === "object") {
         try {
           const stripped = {};
           const today = new Date().toISOString().split("T")[0];
           for (const [date, day] of Object.entries(val)) {
             if (date === today) {
-              stripped[date] = day; // keep today's full data
+              stripped[date] = day;
             } else if (day.meals) {
-              // strip thumbnails from older days
               stripped[date] = { ...day, meals: day.meals.map(m => ({ ...m, thumbnail: null })) };
             }
           }
@@ -227,7 +225,6 @@ function SetupScreen({ onSave }) {
       setError("La clave debe empezar por sk-ant-");
       return;
     }
-    // Skip verification test, just save the key directly
     onSave(key.trim());
   };
 
@@ -268,7 +265,7 @@ function SetupScreen({ onSave }) {
         {error && <div style={{ color:C.red, fontSize:12, marginBottom:12 }}>⚠️ {error}</div>}
 
         <button onClick={handleSave} disabled={testing || !key.trim()}
-          style={{ width:"100%", padding:"15px", background: testing||!key.trim() ? C.surface2 : C.text, border:"none", borderRadius:14, color: testing||!key.trim() ? C.text3 : C.bg, fontWeight:900, fontSize:15, cursor: testing||!key.trim() ? "default" : "pointer" }}>
+          style={{ width:"100%", padding:"15px", background: testing||!key.trim() ? C.surface2 : C.greenNeon, border:"none", borderRadius:14, color: testing||!key.trim() ? C.text3 : "#000", fontWeight:900, fontSize:15, cursor: testing||!key.trim() ? "default" : "pointer" }}>
           {testing ? "Verificando..." : "Empezar →"}
         </button>
 
@@ -339,7 +336,7 @@ function OnboardingFlow({ apiKey, onDone }) {
       const finish = (prof) => {
         if (done) return;
         done = true;
-        onDone(prof); // Triggers component unmount — do NOT update state after this
+        onDone(prof);
       };
       try {
         setGenStatus("Calculando tu metabolismo basal...");
@@ -412,9 +409,9 @@ Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,
     <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"-apple-system,sans-serif" }}>
       <img src="/icon-512.png" alt="" style={{ width:80, height:80, borderRadius:20, marginBottom:24, animation:"splashLogo 0.8s ease forwards" }} />
       <div style={{ fontSize:18, fontWeight:900, marginBottom:8, textAlign:"center" }}>Creando tu plan personalizado</div>
-      <div style={{ fontSize:13, color:C.blue, marginBottom:32, textAlign:"center" }}>{genStatus}</div>
+      <div style={{ fontSize:13, color:C.greenNeon, marginBottom:32, textAlign:"center" }}>{genStatus}</div>
       <div style={{ width:240, background:C.surface2, borderRadius:6, height:6, overflow:"hidden" }}>
-        <div style={{ height:"100%", width:"60%", background:C.blue, borderRadius:6, animation:"shimmerBar 1.2s ease-in-out infinite" }} />
+        <div style={{ height:"100%", width:"60%", background:C.greenNeon, borderRadius:6, animation:"shimmerBar 1.2s ease-in-out infinite" }} />
       </div>
       <style>{`@keyframes splashLogo{from{opacity:0;transform:scale(0.5)}to{opacity:1;transform:scale(1)}}`}</style>
     </div>
@@ -430,10 +427,10 @@ Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,
         </div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
           <span style={{ fontSize:12, color:C.text3 }}>{step+1} / {OB_STEPS.length}</span>
-          <span style={{ fontSize:12, color:C.blue, fontWeight:700 }}>{Math.round(progress)}%</span>
+          <span style={{ fontSize:12, color:C.greenNeon, fontWeight:700 }}>{Math.round(progress)}%</span>
         </div>
         <div style={{ background:C.surface2, borderRadius:6, height:6, overflow:"hidden", marginBottom:4 }}>
-          <div style={{ width:`${progress}%`, height:"100%", background:`linear-gradient(90deg,${C.blue}88,${C.blue})`, borderRadius:6, transition:"width 0.5s ease" }} />
+          <div style={{ width:`${progress}%`, height:"100%", background:`linear-gradient(90deg,${C.greenNeon}88,${C.greenNeon})`, borderRadius:6, transition:"width 0.5s ease" }} />
         </div>
       </div>
 
@@ -443,34 +440,31 @@ Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,
         <div style={{ fontSize:22, fontWeight:900, marginBottom:6, lineHeight:1.2 }}>{s.q}</div>
         <div style={{ fontSize:13, color:C.text3, marginBottom:24, lineHeight:1.4 }}>{s.hint}</div>
 
-        {/* Text input */}
         {s.type === "text" && (
           <input value={customVal || answers[s.id] || ""}
             onChange={e => { setCustomVal(e.target.value); setAnswers(p=>({...p,[s.id]:e.target.value})); }}
             onKeyDown={e => e.key==="Enter" && goNext()}
             placeholder={s.placeholder}
-            style={{ ...S.inp, fontSize:18, padding:"14px 16px" }} autoFocus />
+            style={{ ...S.inp, fontSize:18, padding:"14px 16px", borderColor:C.border }} autoFocus />
         )}
 
-        {/* Number input */}
         {s.type === "number" && (
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <input type="number" value={numVal} onChange={e=>setNumVal(e.target.value)}
               onKeyDown={e => e.key==="Enter" && goNext()}
               placeholder={s.placeholder}
-              style={{ ...S.inp, fontSize:24, fontWeight:900, textAlign:"center", flex:1, color:C.blue }} autoFocus />
+              style={{ ...S.inp, fontSize:24, fontWeight:900, textAlign:"center", flex:1, color:C.greenNeon, borderColor:C.border }} autoFocus />
             <span style={{ fontSize:16, color:C.text3, fontWeight:600, flexShrink:0 }}>{s.unit}</span>
           </div>
         )}
 
-        {/* Single select */}
         {s.type === "single" && (
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {s.opts.map(opt => {
               const sel = answers[s.id]===opt && !customVal;
               return (
                 <button key={opt} onClick={()=>{ setAnswers(p=>({...p,[s.id]:opt})); setCustomVal(""); }}
-                  style={{ padding:"14px 16px", borderRadius:14, border:`1.5px solid ${sel?C.blue:C.border}`, background:sel?`${C.blue}18`:C.surface, color:sel?C.blue:C.text2, fontWeight:sel?700:500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  style={{ padding:"14px 16px", borderRadius:14, border:`1.5px solid ${sel?C.greenNeon:C.border}`, background:sel?`${C.greenNeon}18`:C.surface, color:sel?C.greenNeon:C.text2, fontWeight:sel?700:500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                   <span>{opt}</span>
                   {sel && <span style={{ fontSize:16 }}>✓</span>}
                 </button>
@@ -478,19 +472,18 @@ Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,
             })}
             <input value={customVal} onChange={e=>{setCustomVal(e.target.value);setAnswers(p=>({...p,[s.id]:""}));}}
               placeholder="Otra opción (escribe aquí)..."
-              style={{ ...S.inp, border:`1.5px solid ${customVal?C.blue:C.border}`, marginTop:4 }} />
+              style={{ ...S.inp, border:`1.5px solid ${customVal?C.greenNeon:C.border}`, marginTop:4 }} />
           </div>
         )}
 
-        {/* Multi select */}
         {s.type === "multi" && (
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {s.opts.map(opt => {
               const sel = multiSel.includes(opt);
               return (
                 <button key={opt} onClick={()=>toggleMulti(opt)}
-                  style={{ padding:"13px 16px", borderRadius:14, border:`1.5px solid ${sel?C.blue:C.border}`, background:sel?`${C.blue}18`:C.surface, color:sel?C.blue:C.text2, fontWeight:sel?700:500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s", display:"flex", alignItems:"center", gap:12 }}>
-                  <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${sel?C.blue:C.border}`, background:sel?C.blue:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:12 }}>
+                  style={{ padding:"13px 16px", borderRadius:14, border:`1.5px solid ${sel?C.greenNeon:C.border}`, background:sel?`${C.greenNeon}18`:C.surface, color:sel?C.greenNeon:C.text2, fontWeight:sel?700:500, fontSize:14, cursor:"pointer", textAlign:"left", transition:"all 0.15s", display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:20, height:20, borderRadius:6, border:`2px solid ${sel?C.greenNeon:C.border}`, background:sel?C.greenNeon:"transparent", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:12, color:"#000" }}>
                     {sel && "✓"}
                   </div>
                   {opt}
@@ -499,18 +492,12 @@ Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,
             })}
             <input value={customVal} onChange={e=>setCustomVal(e.target.value)}
               placeholder="Otro (escribe aquí)..."
-              style={{ ...S.inp, border:`1.5px solid ${customVal?C.blue:C.border}`, marginTop:4 }} />
-            {(multiSel.length > 0 || customVal) && (
-              <div style={{ fontSize:11, color:C.blue, fontWeight:600, marginTop:2 }}>
-                ✓ {multiSel.length + (customVal?1:0)} seleccionado{multiSel.length+( customVal?1:0)!==1?"s":""}
-              </div>
-            )}
+              style={{ ...S.inp, border:`1.5px solid ${customVal?C.greenNeon:C.border}`, marginTop:4 }} />
           </div>
         )}
       </div>
 
-      {/* Fixed bottom buttons */}
-      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, padding:"12px 24px 28px", background:"rgba(0,0,0,0.95)", backdropFilter:"blur(16px)", borderTop:`1px solid ${C.border}`, display:"flex", gap:10 }}>
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, padding:"12px 24px 28px", background:"rgba(10,10,11,0.95)", backdropFilter:"blur(16px)", borderTop:`1px solid ${C.border}`, display:"flex", gap:10 }}>
         {step > 0 && (
           <button onClick={()=>{ setStep(p=>p-1); setCustomVal(""); setNumVal(""); setMultiSel([]); }}
             style={{ flex:1, padding:"14px", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, color:C.text2, fontWeight:700, fontSize:15, cursor:"pointer" }}>
@@ -518,7 +505,7 @@ Formato exacto: {"calorias":número,"proteinas":número,"carbohidratos":número,
           </button>
         )}
         <button onClick={goNext} disabled={!canNext()}
-          style={{ flex:2, padding:"15px", background:canNext()?C.blue:C.surface2, border:"none", borderRadius:14, color:canNext()?C.text:C.text3, fontWeight:900, fontSize:15, cursor:canNext()?"pointer":"default", transition:"all 0.2s" }}>
+          style={{ flex:2, padding:"15px", background:canNext()?C.greenNeon:C.surface2, border:"none", borderRadius:14, color:canNext()?"#000":C.text3, fontWeight:900, fontSize:15, cursor:canNext()?"pointer":"default", transition:"all 0.2s" }}>
           {isLast ? "🚀 Crear mi plan" : "Siguiente →"}
         </button>
       </div>
@@ -534,7 +521,7 @@ function AICoachPanel({ onClose, apiKey, profile, goals, history, meals, setGoal
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef();
-  const CHIPS = ["¿Cómo voy hoy?","¿Qué puedo cenar?","Baja mis calorías a 1800","Dame un snack proteico","¿Estoy cumpliendo mis macros?"];
+  const CHIPS = ["¿Cómo voy hoy?","¿Qué puedo cenar?","Baja mis calorías a 1800","Dame un snack proteico"];
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
   useEffect(() => { ls.set(STORAGE_KEY, messages.slice(-30)); }, [messages]);
@@ -573,7 +560,7 @@ function AICoachPanel({ onClose, apiKey, profile, goals, history, meals, setGoal
     <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:300, display:"flex", flexDirection:"column", fontFamily:"-apple-system,sans-serif" }}>
       <div style={{ padding:"20px 20px 12px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center", background:C.bg }}>
         <div>
-          <div style={{ fontSize:11, color:C.blue, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5 }}>NutriCoach IA</div>
+          <div style={{ fontSize:11, color:C.greenNeon, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5 }}>NutriCoach IA</div>
           <div style={{ fontSize:18, fontWeight:900 }}>Tu coach personal</div>
         </div>
         <button onClick={onClose} style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, color:C.text2, fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
@@ -582,18 +569,19 @@ function AICoachPanel({ onClose, apiKey, profile, goals, history, meals, setGoal
       <div style={{ flex:1, overflowY:"auto", padding:"16px 20px", display:"flex", flexDirection:"column", gap:12 }}>
         {messages.map((m, i) => (
           <div key={i} style={{ display:"flex", justifyContent: m.role==="user" ? "flex-end" : "flex-start" }}>
-            {m.role==="assistant" && <div style={{ width:32, height:32, borderRadius:10, background:C.blue+"22", border:`1px solid ${C.blue}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, marginRight:10, alignSelf:"flex-end" }}>🥗</div>}
+            {m.role==="assistant" && <div style={{ width:32, height:32, borderRadius:10, background:C.greenNeon+"22", border:`1px solid ${C.greenNeon}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0, marginRight:10, alignSelf:"flex-end" }}>🤖</div>}
             <div style={{
               maxWidth:"80%", padding:"12px 14px", borderRadius: m.role==="user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-              background: m.role==="user" ? C.blue : C.surface,
+              background: m.role==="user" ? C.greenNeon : C.surface,
+              color: m.role==="user" ? "#000" : C.text,
               border: m.role==="user" ? "none" : `1px solid ${C.border}`,
-              fontSize:14, lineHeight:1.5, color:C.text,
+              fontSize:14, lineHeight:1.5, fontWeight: m.role==="user" ? 600 : 400
             }}>{m.text}</div>
           </div>
         ))}
         {loading && (
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <div style={{ width:32, height:32, borderRadius:10, background:C.blue+"22", border:`1px solid ${C.blue}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🥗</div>
+            <div style={{ width:32, height:32, borderRadius:10, background:C.greenNeon+"22", border:`1px solid ${C.greenNeon}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🤖</div>
             <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:"18px 18px 18px 4px", padding:"12px 16px" }}>
               <div style={{ display:"flex", gap:4 }}>
                 {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:C.text3, animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
@@ -617,11 +605,10 @@ function AICoachPanel({ onClose, apiKey, profile, goals, history, meals, setGoal
           onKeyDown={e=>e.key==="Enter"&&send()}
           style={{ ...S.inp, flex:1 }} />
         <button onClick={send} disabled={loading||!input.trim()}
-          style={{ width:44, height:44, borderRadius:12, background:loading||!input.trim()?C.surface2:C.blue, border:"none", cursor:loading||!input.trim()?"default":"pointer", color:C.text, fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          style={{ width:44, height:44, borderRadius:12, background:loading||!input.trim()?C.surface2:C.greenNeon, border:"none", cursor:loading||!input.trim()?"default":"pointer", color:loading||!input.trim()?C.text3:"#000", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
           ↑
         </button>
       </div>
-      <style>{`@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
     </div>
   );
 }
@@ -655,11 +642,11 @@ Formato: {"dias":[{"dia":"Lunes","desayuno":{"nombre":"nombre","calorias":númer
       <div style={{ maxWidth:430, margin:"0 auto", padding:"24px 20px" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
           <div>
-            <div style={{ fontSize:11, color:C.blue, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5, marginBottom:3 }}>Personalizado por IA</div>
+            <div style={{ fontSize:11, color:C.greenNeon, fontWeight:700, textTransform:"uppercase", letterSpacing:1.5, marginBottom:3 }}>Personalizado por IA</div>
             <div style={{ fontSize:20, fontWeight:900 }}>Menú semanal</div>
           </div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={generate} disabled={generating} style={{ padding:"8px 14px", background:C.blue+"22", border:`1px solid ${C.blue}44`, borderRadius:10, color:C.blue, fontWeight:700, fontSize:12, cursor:generating?"default":"pointer" }}>
+            <button onClick={generate} disabled={generating} style={{ padding:"8px 14px", background:C.greenNeon+"22", border:`1px solid ${C.greenNeon}44`, borderRadius:10, color:C.greenNeon, fontWeight:700, fontSize:12, cursor:generating?"default":"pointer" }}>
               {generating?"⏳":"🔄"} {generating?"Generando...":"Regenerar"}
             </button>
             <button onClick={onClose} style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, color:C.text2, fontSize:18, cursor:"pointer", width:36, height:36, display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
@@ -671,17 +658,16 @@ Formato: {"dias":[{"dia":"Lunes","desayuno":{"nombre":"nombre","calorias":númer
             <div style={{ fontSize:56, marginBottom:16 }}>🍽️</div>
             <div style={{ fontSize:18, fontWeight:700, marginBottom:8 }}>Sin menú generado</div>
             <div style={{ fontSize:13, color:C.text2, marginBottom:24, lineHeight:1.6 }}>La IA creará un menú semanal completamente personalizado a tus objetivos y preferencias.</div>
-            <button onClick={generate} disabled={generating} style={{ padding:"15px 32px", background:C.blue, border:"none", borderRadius:14, color:C.text, fontWeight:900, fontSize:15, cursor:"pointer" }}>
+            <button onClick={generate} disabled={generating} style={{ padding:"15px 32px", background:C.greenNeon, border:"none", borderRadius:14, color:"#000", fontWeight:900, fontSize:15, cursor:"pointer" }}>
               {generating?"⏳ Generando tu menú...":"✨ Generar menú personalizado"}
             </button>
           </div>
         ) : (
           <>
-            {/* Day selector */}
             <div style={{ display:"flex", gap:6, marginBottom:20, overflowX:"auto", paddingBottom:4 }}>
               {WEEK_DAYS.map((d, i) => (
                 <button key={d} onClick={()=>setDayIdx(i)}
-                  style={{ padding:"8px 12px", borderRadius:12, border:`1px solid ${dayIdx===i?C.blue:C.border}`, background:dayIdx===i?`${C.blue}22`:C.surface, color:dayIdx===i?C.blue:C.text3, fontWeight:dayIdx===i?800:500, fontSize:12, cursor:"pointer", flexShrink:0, whiteSpace:"nowrap" }}>
+                  style={{ padding:"8px 12px", borderRadius:12, border:`1px solid ${dayIdx===i?C.greenNeon:C.border}`, background:dayIdx===i?`${C.greenNeon}22`:C.surface, color:dayIdx===i?C.greenNeon:C.text3, fontWeight:dayIdx===i?800:500, fontSize:12, cursor:"pointer", flexShrink:0, whiteSpace:"nowrap" }}>
                   {d.slice(0,3)}
                 </button>
               ))}
@@ -691,7 +677,7 @@ Formato: {"dias":[{"dia":"Lunes","desayuno":{"nombre":"nombre","calorias":númer
               <div>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                   <div style={{ fontSize:18, fontWeight:900 }}>{WEEK_DAYS[dayIdx]}</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:C.orange }}>{day.totalCalorias} kcal</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:C.greenNeon }}>{day.totalCalorias} kcal</div>
                 </div>
                 {MEALS_ORDER.map(([key, emoji, label]) => {
                   const m = day[key];
@@ -706,7 +692,7 @@ Formato: {"dias":[{"dia":"Lunes","desayuno":{"nombre":"nombre","calorias":númer
                           <div style={{ fontSize:12, color:C.text2, lineHeight:1.4 }}>{m.descripcion}</div>
                         </div>
                         <div style={{ textAlign:"right", flexShrink:0, marginLeft:12 }}>
-                          <div style={{ fontSize:16, fontWeight:900, color:C.orange }}>{m.calorias}</div>
+                          <div style={{ fontSize:16, fontWeight:900, color:C.text }}>{m.calorias}</div>
                           <div style={{ fontSize:9, color:C.text3 }}>kcal</div>
                         </div>
                       </div>
@@ -736,7 +722,7 @@ SEMANA: ${Math.round(wk)}kcal de ${goals.calorias*7}.`;
 // ── Toast Notifications ───────────────────────────────────────
 function Toast({ msg, type="success", onDone }) {
   useEffect(()=>{ const t=setTimeout(onDone, 2500); return()=>clearTimeout(t); },[]);
-  const col = type==="error"?C.red:type==="warning"?C.amber:C.green;
+  const col = type==="error"?C.red:type==="warning"?C.amber:C.greenNeon;
   return (
     <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", zIndex:600, animation:"toastIn 0.35s cubic-bezier(.34,1.56,.64,1) forwards", pointerEvents:"none" }}>
       <div style={{ background:C.surface, border:`1px solid ${col}44`, borderRadius:14, padding:"11px 18px", display:"flex", alignItems:"center", gap:10, boxShadow:"0 8px 32px rgba(0,0,0,0.6)" }}>
@@ -762,7 +748,6 @@ function ConfirmDialog({ msg, onConfirm, onCancel }) {
   );
 }
 
-
 function AnimatedNumber({ value, duration = 600, style }) {
   const [display, setDisplay] = useState(value);
   const prevRef = useRef(value);
@@ -783,75 +768,35 @@ function AnimatedNumber({ value, duration = 600, style }) {
   return <span style={style}>{display}</span>;
 }
 
-// ── Donut Macro Chart ─────────────────────────────────────────
-function DonutChart({ p, c, g, goals }) {
-  const total = p + c + g;
-  if (total === 0) return (
-    <div style={{ width:70, height:70, borderRadius:"50%", background:C.surface2, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <span style={{ fontSize:10, color:C.text3 }}>—</span>
-    </div>
-  );
-  const R = 28, cx = 35, cy = 35, stroke = 9;
-  const circ = 2 * Math.PI * R;
-  const pPct = p / total, cPct = c / total, gPct = g / total;
-  const segments = [
-    { pct: pPct, color: C.blue  },
-    { pct: cPct, color: C.amber },
-    { pct: gPct, color: C.pink  },
-  ];
-  let offset = 0;
-  return (
-    <div style={{ position:"relative", width:70, height:70, flexShrink:0 }}>
-      <svg width="70" height="70" viewBox="0 0 70 70" style={{ transform:"rotate(-90deg)" }}>
-        <circle cx={cx} cy={cy} r={R} fill="none" stroke={C.surface2} strokeWidth={stroke}/>
-        {segments.map((s, i) => {
-          const dash = s.pct * circ;
-          const el = (
-            <circle key={i} cx={cx} cy={cy} r={R} fill="none" stroke={s.color}
-              strokeWidth={stroke} strokeDasharray={`${dash} ${circ - dash}`}
-              strokeDashoffset={-offset * circ} strokeLinecap="butt"/>
-          );
-          offset += s.pct;
-          return el;
-        })}
-      </svg>
-      <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-        <span style={{ fontSize:11, fontWeight:900, color:C.text, lineHeight:1 }}>{Math.round(total)}</span>
-        <span style={{ fontSize:8, color:C.text3 }}>g</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Success Tick ──────────────────────────────────────────────
-function SuccessTick({ onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 1800); return () => clearTimeout(t); }, []);
-  return (
-    <div style={{ position:"fixed", inset:0, zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", pointerEvents:"none" }}>
-      <div style={{ animation:"tickPop 0.4s cubic-bezier(.34,1.56,.64,1) forwards", background:`${C.green}22`, border:`2px solid ${C.green}`, borderRadius:24, padding:"20px 32px", display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:32, height:32, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>✓</div>
-        <span style={{ fontSize:15, fontWeight:800, color:C.green }}>Comida añadida</span>
-      </div>
-    </div>
-  );
-}
-
-function MacroBar({ label, value, goal, color }) {
+// ── Premium Macro Card ─────────────────────────────────────────
+function PremiumMacroCard({ label, value, goal, color, bgUrl, unit="g" }) {
   const pct = Math.min((value / goal) * 100, 100);
   return (
-    <div style={{ flex:1, minWidth:0 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-        <span style={{ fontSize:10, color:C.text3, fontWeight:700, textTransform:"uppercase", letterSpacing:0.8 }}>{label}</span>
-        <span style={{ fontSize:11, color, fontWeight:800 }}>{Math.round(value)}<span style={{ color:C.text3, fontWeight:400 }}>/{goal}g</span></span>
-      </div>
-      <div style={{ background:C.surface2, borderRadius:4, height:5, overflow:"hidden" }}>
-        <div style={{ width:`${pct}%`, height:"100%", background:`linear-gradient(90deg,${color}88,${color})`, borderRadius:4, transition:"width 0.6s ease" }} />
-      </div>
+    <div style={{ position:"relative", borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, padding:12, display:"flex", flexDirection:"column", justifyContent:"space-between", height:110, flex:1 }}>
+       <div style={{ position:"absolute", inset:0, backgroundImage:`url(${bgUrl})`, backgroundSize:"cover", backgroundPosition:"center" }} />
+       <div style={{ position:"absolute", inset:0, background:`linear-gradient(to right, rgba(18,18,20,0.95) 30%, rgba(18,18,20,0.6) 100%)` }} />
+
+       <div style={{ position:"relative", zIndex:10 }}>
+          <div style={{ fontSize:10, fontWeight:800, color:color, textTransform:"uppercase", letterSpacing:1 }}>{label}</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:2, marginTop:2 }}>
+            <span style={{ fontSize:22, fontWeight:900, color:C.text }}>{Math.round(value)}</span>
+            <span style={{ fontSize:12, color:C.text2 }}>{unit}</span>
+          </div>
+          <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>Objetivo {goal}{unit}</div>
+       </div>
+
+       <div style={{ position:"relative", zIndex:10, display:"flex", alignItems:"center", gap:8, marginTop:8 }}>
+          <div style={{ flex:1, height:4, background:"rgba(255,255,255,0.1)", borderRadius:2, overflow:"hidden" }}>
+             <div style={{ width:`${pct}%`, height:"100%", background:color, boxShadow:`0 0 8px ${color}` }} />
+          </div>
+          <span style={{ fontSize:10, color:C.text2, fontWeight:600 }}>{Math.round(pct)}%</span>
+       </div>
     </div>
   );
 }
 
-function MealCard({ meal, onDelete, onUpdate, apiKey, slots, profile, goals }) {
+// ── Timeline Meal Card ────────────────────────────────────────
+function MealCard({ meal, onDelete, onUpdate, apiKey, slots, profile, goals, isLast }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMsg, setChatMsg] = useState("");
   const [correcting, setCorrecting] = useState(false);
@@ -879,83 +824,88 @@ Formato: {"platos":[{"nombre":"nombre+cantidad","calorias":N,"proteinas":N,"carb
   };
 
   return (
-    <div style={{ ...S.card, borderLeft:`3px solid ${accent}`, boxShadow:`inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.4)` }}>
-      {meal.thumbnail && <img src={meal.thumbnail} alt="" style={{ width:"100%", maxHeight:200, objectFit:"cover", borderRadius:12, marginBottom:12, display:"block" }} />}
+    <div style={{ display:"flex", gap:16, position:"relative", paddingBottom:isLast ? 0 : 20 }}>
+       {!isLast && <div style={{ position:"absolute", left:43, top:26, bottom:0, width:1, background:C.border }} />}
 
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-          <button onClick={() => onUpdate && setSlotOpen(p=>!p)}
-            style={{ fontSize:12, color:accent, fontWeight:700, background:"none", border:"none", cursor:onUpdate?"pointer":"default", padding:0 }}>
-            {meal.slotEmoji} {meal.slot}
-          </button>
-          {timeStr && <span style={{ fontSize:11, color:C.text3 }}>{timeStr}</span>}
-        </div>
-        <div style={{ display:"flex", gap:8 }}>
-          {onUpdate && <button onClick={() => { setChatOpen(p=>!p); setChatMsg(""); }} style={{ background:chatOpen?`${C.blue}22`:"none", border:chatOpen?`1px solid ${C.blue}44`:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer", color:chatOpen?C.blue:C.text3, fontSize:12, fontWeight:600 }}>✏️ corregir</button>}
-          {onDelete && <button onClick={onDelete} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:18, lineHeight:1 }}>×</button>}
-        </div>
-      </div>
+       <div style={{ width:36, fontSize:11, color:C.text3, fontWeight:600, paddingTop:8, textAlign:"right" }}>{timeStr}</div>
 
-      {/* Slot selector */}
-      {slotOpen && (
-        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
-          {(slots||[]).map(sl => (
-            <button key={sl.id} onClick={() => { onUpdate({ ...meal, slot:sl.label, slotEmoji:sl.emoji }); setSlotOpen(false); }}
-              style={{ padding:"5px 12px", borderRadius:100, border:"none", cursor:"pointer", background: meal.slot===sl.label ? C.text : C.surface2, color: meal.slot===sl.label ? C.bg : C.text2, fontSize:12, fontWeight:700 }}>
-              {sl.emoji} {sl.label}
-            </button>
-          ))}
-        </div>
-      )}
+       <div style={{ position:"relative", zIndex:2, width:10, height:10, borderRadius:"50%", background:accent, border:`2px solid ${C.surface}`, marginTop:10, boxShadow:`0 0 8px ${accent}` }} />
 
-      <div style={{ fontSize:15, color:C.text, marginBottom:8, lineHeight:1.4, fontWeight:500 }}>{meal.descripcion}</div>
-        {meal.consejoPerfil && <div style={{ fontSize:12, color:C.blue, marginBottom:8, lineHeight:1.4 }}>💡 {meal.consejoPerfil}</div>}
+       <div style={{ flex:1, background:"#121214", borderRadius:16, border:`1px solid ${C.border}`, padding:14 }}>
+          {meal.thumbnail && <img src={meal.thumbnail} alt="" style={{ width:"100%", maxHeight:140, objectFit:"cover", borderRadius:12, marginBottom:12, display:"block" }} />}
 
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div style={{ display:"flex", gap:6 }}>
-          {[["P",meal.totalProteinas||0,C.blue],["C",meal.totalCarbohidratos||0,C.amber],["G",meal.totalGrasas||0,C.pink]].map(([l,v,col]) => (
-            <div key={l} style={{ padding:"4px 10px", background:C.surface2, borderRadius:8, textAlign:"center" }}>
-              <div style={{ fontSize:12, fontWeight:700, color:col }}>{Math.round(v)}g</div>
-              <div style={{ fontSize:9, color:C.text3 }}>{l}</div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <button onClick={() => onUpdate && setSlotOpen(p=>!p)}
+                style={{ fontSize:12, color:accent, fontWeight:700, background:"none", border:"none", cursor:onUpdate?"pointer":"default", padding:0 }}>
+                {meal.slotEmoji} {meal.slot}
+              </button>
             </div>
-          ))}
-        </div>
-        <div><span style={{ fontSize:20, fontWeight:900 }}>{meal.totalCalorias}</span><span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>kcal</span></div>
-      </div>
-
-      {meal.platos?.length > 0 && (
-        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
-          {meal.platos.map((p,i) => (
-            <div key={i} style={{ fontSize:12, display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-              <span style={{ color:C.text2 }}>{p.nombre}</span><span style={{ color:C.orange, fontWeight:700, fontSize:13 }}>{p.calorias} kcal</span>
+            <div style={{ display:"flex", gap:8 }}>
+              {onUpdate && <button onClick={() => { setChatOpen(p=>!p); setChatMsg(""); }} style={{ background:chatOpen?`${C.blue}22`:"none", border:chatOpen?`1px solid ${C.blue}44`:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer", color:chatOpen?C.blue:C.text3, fontSize:12, fontWeight:600 }}>✏️ corregir</button>}
+              {onDelete && <button onClick={onDelete} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:18, lineHeight:1 }}>×</button>}
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Chat correction box */}
-      {chatOpen && (
-        <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
-          <div style={{ fontSize:11, color:C.text3, marginBottom:8 }}>Dile a la IA qué corregir — cantidad, ingrediente, franja horaria…</div>
-          <textarea
-            value={chatMsg}
-            onChange={e => setChatMsg(e.target.value)}
-            placeholder="Ej: eran tostaditas pequeñas de espelta, solo 3, y las fresas eran 6 no 10"
-            style={{ ...S.inp, resize:"none", minHeight:72, lineHeight:1.5, fontSize:13, marginBottom:8 }}
-            onKeyDown={e => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); correct(); } }}
-          />
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={() => { setChatOpen(false); setChatMsg(""); }}
-              style={{ flex:1, padding:"10px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:10, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>
-              Cancelar
-            </button>
-            <button onClick={correct} disabled={correcting || !chatMsg.trim()}
-              style={{ flex:2, padding:"10px", background: correcting||!chatMsg.trim() ? C.surface2 : C.text, border:"none", borderRadius:10, color: correcting||!chatMsg.trim() ? C.text3 : C.bg, fontWeight:800, fontSize:13, cursor: correcting||!chatMsg.trim() ? "default" : "pointer" }}>
-              {correcting ? "⏳ Corrigiendo..." : "✓ Corregir"}
-            </button>
           </div>
-        </div>
-      )}
+
+          {slotOpen && (
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
+              {(slots||[]).map(sl => (
+                <button key={sl.id} onClick={() => { onUpdate({ ...meal, slot:sl.label, slotEmoji:sl.emoji }); setSlotOpen(false); }}
+                  style={{ padding:"5px 12px", borderRadius:100, border:"none", cursor:"pointer", background: meal.slot===sl.label ? C.text : C.surface2, color: meal.slot===sl.label ? C.bg : C.text2, fontSize:12, fontWeight:700 }}>
+                  {sl.emoji} {sl.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div style={{ fontSize:14, color:C.text, marginBottom:8, lineHeight:1.4, fontWeight:500 }}>{meal.descripcion}</div>
+          {meal.consejoPerfil && <div style={{ fontSize:12, color:C.greenNeon, marginBottom:8, lineHeight:1.4 }}>💡 {meal.consejoPerfil}</div>}
+
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div style={{ display:"flex", gap:6 }}>
+              {[["P",meal.totalProteinas||0,C.blue],["C",meal.totalCarbohidratos||0,C.amber],["G",meal.totalGrasas||0,C.pink]].map(([l,v,col]) => (
+                <div key={l} style={{ padding:"4px 10px", background:C.surface2, borderRadius:8, textAlign:"center" }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:col }}>{Math.round(v)}g</div>
+                  <div style={{ fontSize:9, color:C.text3 }}>{l}</div>
+                </div>
+              ))}
+            </div>
+            <div><span style={{ fontSize:18, fontWeight:900 }}>{meal.totalCalorias}</span><span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>kcal</span></div>
+          </div>
+
+          {meal.platos?.length > 0 && (
+            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+              {meal.platos.map((p,i) => (
+                <div key={i} style={{ fontSize:12, display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                  <span style={{ color:C.text2 }}>{p.nombre}</span><span style={{ color:C.text, fontWeight:700, fontSize:13 }}>{p.calorias} kcal</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {chatOpen && (
+            <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:11, color:C.text3, marginBottom:8 }}>Dile a la IA qué corregir — cantidad, ingrediente...</div>
+              <textarea
+                value={chatMsg}
+                onChange={e => setChatMsg(e.target.value)}
+                placeholder="Ej: eran tostaditas pequeñas de espelta, solo 3"
+                style={{ ...S.inp, resize:"none", minHeight:72, lineHeight:1.5, fontSize:13, marginBottom:8 }}
+                onKeyDown={e => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); correct(); } }}
+              />
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={() => { setChatOpen(false); setChatMsg(""); }}
+                  style={{ flex:1, padding:"10px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:10, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>
+                  Cancelar
+                </button>
+                <button onClick={correct} disabled={correcting || !chatMsg.trim()}
+                  style={{ flex:2, padding:"10px", background: correcting||!chatMsg.trim() ? C.surface2 : C.text, border:"none", borderRadius:10, color: correcting||!chatMsg.trim() ? C.text3 : C.bg, fontWeight:800, fontSize:13, cursor: correcting||!chatMsg.trim() ? "default" : "pointer" }}>
+                  {correcting ? "⏳ Corrigiendo..." : "✓ Corregir"}
+                </button>
+              </div>
+            </div>
+          )}
+       </div>
     </div>
   );
 }
@@ -972,7 +922,7 @@ function RecGroup({ grupo }) {
             {op.cantidad && <div style={{ fontSize:12, color:C.text3, lineHeight:1.4 }}>{op.cantidad}</div>}
           </div>
           <div style={{ textAlign:"right", flexShrink:0 }}>
-            <div style={{ fontSize:18, fontWeight:900, color:C.green }}>{op.calorias}</div>
+            <div style={{ fontSize:18, fontWeight:900, color:C.greenNeon }}>{op.calorias}</div>
             <div style={{ fontSize:10, color:C.text3 }}>kcal</div>
           </div>
         </div>
@@ -1006,11 +956,10 @@ function CalView({ history, goals, onSelect, selected }) {
           const dd = history[ds];
           const isT = ds===todStr, isSel = ds===selected;
           const pct = dd ? Math.min(dd.meals.reduce((s,m)=>s+m.totalCalorias,0)/goals.calorias, 1) : 0;
-          const barColor = dd ? (pct>0.95?C.green:pct>0.6?C.amber:pct>0.3?C.orange:C.text3) : null;
+          const barColor = dd ? (pct>0.95?C.greenNeon:pct>0.6?C.amber:pct>0.3?C.orange:C.text3) : null;
           return (
             <button key={ds} onClick={() => dd && onSelect(isSel?null:ds)}
               style={{ borderRadius:10, border:isSel?`2px solid ${C.blue}`:isT?`2px solid ${C.text3}`:`1px solid ${C.border}`, background:isSel?`${C.blue}15`:C.surface, cursor:dd?"pointer":"default", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-end", padding:"4px 3px 3px", aspectRatio:"1", overflow:"hidden", position:"relative" }}>
-              {/* Mini bar chart */}
               {dd && pct > 0 && (
                 <div style={{ position:"absolute", bottom:0, left:0, right:0, height:`${pct*100}%`, maxHeight:"60%", background:`${barColor}33`, borderRadius:"0 0 8px 8px" }} />
               )}
@@ -1019,14 +968,6 @@ function CalView({ history, goals, onSelect, selected }) {
             </button>
           );
         })}
-      </div>
-      <div style={{ display:"flex", gap:12, marginTop:12, justifyContent:"center" }}>
-        {[[C.green,"Objetivo"],[C.amber,"Parcial"],[C.orange,"Poco"]].map(([color,label]) => (
-          <div key={label} style={{ display:"flex", alignItems:"center", gap:5 }}>
-            <div style={{ width:8, height:8, borderRadius:2, background:color }} />
-            <span style={{ fontSize:10, color:C.text3 }}>{label}</span>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -1058,7 +999,7 @@ function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetK
           <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"12px 14px", marginBottom:16 }}>
             <div style={{ fontSize:11, color:C.text3, fontWeight:600, marginBottom:10 }}>TU PERFIL</div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
-              {[["TMB",`${profile.tmb||0}kcal`,C.blue],["TDEE",`${profile.tdee||0}kcal`,C.amber],["Peso",`${profile.peso||"–"}kg`,C.green],["Altura",`${profile.altura||"–"}cm`,C.pink]].map(([k,v,col])=>(
+              {[["TMB",`${profile.tmb||0}kcal`,C.blue],["TDEE",`${profile.tdee||0}kcal`,C.amber],["Peso",`${profile.peso||"–"}kg`,C.greenNeon],["Altura",`${profile.altura||"–"}cm`,C.pink]].map(([k,v,col])=>(
                 <div key={k} style={{ textAlign:"center" }}>
                   <div style={{ fontSize:10, color:C.text3 }}>{k}</div>
                   <div style={{ fontSize:13, fontWeight:800, color:col, marginTop:2 }}>{v}</div>
@@ -1077,7 +1018,6 @@ function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetK
                 <input type="number" value={lg[key]} onChange={e => {
                   const val = parseInt(e.target.value)||0;
                   if (key === "calorias") {
-                    // Auto-recalculate macros: 30% protein, 40% carbs, 30% fat
                     setLg(p => ({
                       ...p,
                       calorias: val,
@@ -1094,9 +1034,6 @@ function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetK
               </div>
             </div>
           ))}
-        </div>
-        <div style={{ fontSize:11, color:C.text3, marginBottom:20, paddingLeft:4 }}>
-          Al cambiar las calorías los macros se recalculan automáticamente (30% proteínas, 40% carbos, 30% grasas). Puedes ajustarlos manualmente después.
         </div>
 
         <span style={S.label}>Comidas del día</span>
@@ -1219,7 +1156,6 @@ function BarcodeScanner({ onDetected, onClose }) {
               onDetected(product, barcode);
             }
           } catch(e) {
-            // NotFoundException is normal when no barcode in frame — keep scanning
             if (active) rafId = requestAnimationFrame(decode);
           }
         };
@@ -1263,7 +1199,6 @@ function BarcodeScanner({ onDetected, onClose }) {
             <video ref={videoRef} playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0 }} />
             <canvas ref={canvasRef} style={{ display:"none" }} />
 
-            {/* Overlay */}
             <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
               <div style={{
                 position:"absolute", top:"50%", left:"50%",
@@ -1299,7 +1234,6 @@ function BarcodeScanner({ onDetected, onClose }) {
           </>
         )}
       </div>
-      <style>{`@keyframes scanline { 0%{top:4px} 50%{top:calc(100% - 6px)} 100%{top:4px} }`}</style>
     </div>
   );
 }
@@ -1314,8 +1248,8 @@ function HealthScorePanel({ onClose, apiKey }) {
   const camRef  = useRef();
   const fileRef = useRef();
 
-  const scoreColor = (n) => n>=75?C.green:n>=50?C.yellow:n>=30?C.orange:C.red;
-  const macroColor = (v) => v==="bajo"?C.green:v==="medio"?C.yellow:C.red;
+  const scoreColor = (n) => n>=75?C.greenNeon:n>=50?C.yellow:n>=30?C.orange:C.red;
+  const macroColor = (v) => v==="bajo"?C.greenNeon:v==="medio"?C.yellow:C.red;
 
   const handleBarcodeDetected = (product, rawBarcode) => {
     setShowScanner(false);
@@ -1416,7 +1350,6 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
               style={{ width:"100%", padding:"14px", background:`${C.blue}22`, border:`1px solid ${C.blue}55`, borderRadius:14, color:C.blue, fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
               <span style={{ fontSize:22 }}>📊</span><span>Escanear código de barras</span>
             </button>
-            <div style={{ fontSize:11, color:C.text3, marginTop:10 }}>Apunta la cámara al código y se detecta automáticamente</div>
           </div>
         )}
 
@@ -1434,7 +1367,7 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
                   ["🌾 Carbohidratos", barcodeResult.carbohidratos100, "g", C.amber],
                   ["🫒 Grasas", barcodeResult.grasas100, "g", C.pink],
                   ["🍬 Azúcares", barcodeResult.azucares100, "g", C.yellow],
-                  ["🌿 Fibra", barcodeResult.fibra100, "g", C.green],
+                  ["🌿 Fibra", barcodeResult.fibra100, "g", C.greenNeon],
                 ].map(([label, val, unit, color]) => (
                   <div key={label} style={{ background:C.surface2, borderRadius:12, padding:"12px 14px" }}>
                     <div style={{ fontSize:11, color:C.text3, marginBottom:4 }}>{label}</div>
@@ -1514,8 +1447,8 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
               </div>
             )}
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-              <div style={{ background:C.surface, border:`1px solid ${C.green}33`, borderRadius:14, padding:14 }}>
-                <div style={{ fontSize:11, color:C.green, fontWeight:700, marginBottom:8, textTransform:"uppercase", letterSpacing:1 }}>✓ Puntos fuertes</div>
+              <div style={{ background:C.surface, border:`1px solid rgba(0,255,102,0.2)`, borderRadius:14, padding:14 }}>
+                <div style={{ fontSize:11, color:C.greenNeon, fontWeight:700, marginBottom:8, textTransform:"uppercase", letterSpacing:1 }}>✓ Puntos fuertes</div>
                 {(result.positivos||[]).map((p,i) => <div key={i} style={{ fontSize:12, color:C.text2, marginBottom:5, lineHeight:1.4 }}>• {p}</div>)}
               </div>
               <div style={{ background:C.surface, border:`1px solid ${C.red}33`, borderRadius:14, padding:14 }}>
@@ -1544,7 +1477,6 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
 export default function App() {
   const [apiKey,      setApiKey]      = useState(() => ls.get("nl-apikey") || "");
   const [profile,     setProfile]     = useState(() => ls.get("nl-profile") || null);
-  // Splash only shows if user already had a profile (returning user), NOT after fresh onboarding
   const [splash,      setSplash]      = useState(() => !!ls.get("nl-profile"));
   const [showCoach,   setShowCoach]   = useState(false);
   const [showPlan,    setShowPlan]    = useState(false);
@@ -1579,12 +1511,15 @@ export default function App() {
   const [listening,   setListening]   = useState(false);
   const [voiceText,   setVoiceText]   = useState("");
   const [voiceError,  setVoiceError]  = useState(null);
+  
+  // Nuevo estado para mostrar/ocultar el panel de añadir comida
+  const [showInputPanel, setShowInputPanel] = useState(false);
+
   const fileRef  = useRef();
   const camRef   = useRef();
   const recogRef = useRef(null);
   const todStr   = today();
 
-  // Save meals to history on every change
   useEffect(() => {
     const nh = { ...ls.get("nl-history") || {}, [todStr]: { meals, date:todStr } };
     ls.set("nl-history", nh);
@@ -1600,7 +1535,6 @@ export default function App() {
     const safe = {
       calorias: 2000, proteinas: 150, carbohidratos: 220, grasas: 65,
       pasosObjetivo: 8000, caloriasQuemar: 300, ...p,
-      // Ensure numeric types
       calorias:      parseInt(p.calorias)      || 2000,
       proteinas:     parseInt(p.proteinas)     || 150,
       carbohidratos: parseInt(p.carbohidratos) || 220,
@@ -1609,26 +1543,19 @@ export default function App() {
       caloriasQuemar:parseInt(p.caloriasQuemar)|| 300,
     };
     const newGoals = { calorias:safe.calorias, proteinas:safe.proteinas, carbohidratos:safe.carbohidratos, grasas:safe.grasas };
-    // Save both to localStorage directly (don't rely on effects)
     ls.set("nl-profile", safe);
     ls.set("nl-goals", newGoals);
-    // Update React state
     setProfile(safe);
     setGoals(newGoals);
-    setSplash(false); // Skip splash after onboarding — user doesn't need to see it
+    setSplash(false);
   };
 
-  // Show setup screen if no API key
   if (!apiKey) return <SetupScreen onSave={saveApiKey} />;
-
-  // Show onboarding if no profile
   if (!profile) return <OnboardingFlow apiKey={apiKey} onDone={saveProfile} />;
 
-  // Derived
   const totals = meals.reduce((a,m) => ({cal:a.cal+m.totalCalorias,p:a.p+(m.totalProteinas||0),c:a.c+(m.totalCarbohidratos||0),g:a.g+(m.totalGrasas||0)}),{cal:0,p:0,c:0,g:0});
   const pct = Math.min((totals.cal/goals.calorias)*100, 100);
   const remaining = goals.calorias - totals.cal;
-  const rc = ringColor(pct);
   const eatenLabels = new Set(meals.map(m=>m.slot));
   const lastEatenIdx = slots.reduce((li,sl,idx) => eatenLabels.has(sl.label)?idx:li, -1);
   const futureSlots = slots.filter((sl,idx) => !eatenLabels.has(sl.label) && idx > lastEatenIdx);
@@ -1645,7 +1572,7 @@ export default function App() {
       const slot = slots.find(s=>s.id===selSlot);
       setMeals(p => [...p, { ...result, totalCalorias:result.totalCalorias||0, totalProteinas:result.totalProteinas||0, totalCarbohidratos:result.totalCarbohidratos||0, totalGrasas:result.totalGrasas||0, slot:slot?.label||selSlot, slotEmoji:slot?.emoji||"🍽️", thumbnail, id:Date.now(), consejoPerfil:result.consejoPerfil }]);
       addToast(`+${result.totalCalorias} kcal añadidas`);
-      setRecs(null); setTextInput("");
+      setRecs(null); setTextInput(""); setShowInputPanel(false);
     } catch(e) { addToast("Error al analizar. Comprueba tu conexión.", "error"); }
     finally { setAnalyzing(false); }
   }, [selSlot, slots, apiKey, profile, goals]);
@@ -1655,7 +1582,6 @@ export default function App() {
     const isHeic = file.type==="image/heic"||file.type==="image/heif"||(file.name||"").toLowerCase().endsWith(".heic")||(file.name||"").toLowerCase().endsWith(".heif");
     if (isHeic) { setError("Formato HEIC no compatible. Ve a Ajustes → Cámara → Formatos → Más compatible."); return; }
     try {
-      // Compress image in two versions: one for AI analysis (1024px), one thumbnail for storage (300px)
       const { bigBase64, bigMime, smallThumbnail } = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onerror = rej;
@@ -1663,7 +1589,6 @@ export default function App() {
           const img = new Image();
           img.onerror = rej;
           img.onload = () => {
-            // Big version for AI (max 1024px)
             const BIG = 1024;
             let bw = img.width, bh = img.height;
             if (bw > BIG || bh > BIG) {
@@ -1675,7 +1600,6 @@ export default function App() {
             bigCanvas.getContext("2d").drawImage(img, 0, 0, bw, bh);
             const bigUrl = bigCanvas.toDataURL("image/jpeg", 0.82);
 
-            // Small thumbnail for storage (max 300px at 0.6 quality)
             const SMALL = 300;
             let sw = img.width, sh = img.height;
             if (sw > SMALL || sh > SMALL) {
@@ -1733,9 +1657,7 @@ export default function App() {
   const selDayTotals = selDayData ? selDayData.meals.reduce((a,m)=>({cal:a.cal+m.totalCalorias,p:a.p+(m.totalProteinas||0),c:a.c+(m.totalCarbohidratos||0),g:a.g+(m.totalGrasas||0)}),{cal:0,p:0,c:0,g:0}) : null;
 
   const streak = getStreak(history);
-  const badge  = getStatusBadge(pct, remaining);
 
-  // Weekly budget
   const weeklyGoal = goals.calorias * 7;
   const getWeekCals = () => {
     let total = 0;
@@ -1749,22 +1671,18 @@ export default function App() {
   const weekCals = getWeekCals();
   const weekRemaining = weeklyGoal - weekCals;
 
-  // Activity recommendation based on yesterday
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
   const yesterdayStr = localDateStr(yesterday);
   const yesterdayCals = (history[yesterdayStr]?.meals||[]).reduce((s,m)=>s+m.totalCalorias,0);
   const yesterdayExcess = yesterdayCals - goals.calorias;
   const activityRec = yesterdayCals > 0 ? (
     yesterdayExcess > 300  ? { msg:`Ayer comiste ${Math.round(yesterdayExcess)} kcal de más. Intenta quemar unas ${Math.round(yesterdayExcess)} kcal hoy (~${Math.round(yesterdayExcess/7)} min de cardio).`, color:C.orange, icon:"🏃" } :
-    yesterdayExcess < -300 ? { msg:`Ayer estuviste en déficit de ${Math.abs(Math.round(yesterdayExcess))} kcal. Hoy puedes comer un poco más o descansar.`, color:C.green, icon:"💚" } :
+    yesterdayExcess < -300 ? { msg:`Ayer estuviste en déficit de ${Math.abs(Math.round(yesterdayExcess))} kcal. Hoy puedes comer un poco más o descansar.`, color:C.greenNeon, icon:"💚" } :
     { msg:`Ayer estuviste en objetivo. ¡Sigue así hoy!`, color:C.blue, icon:"🎯" }
   ) : null;
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:90 }}>
-      {/* Dot texture background */}
-      <div style={{ position:"fixed", inset:0, backgroundImage:"radial-gradient(circle, #ffffff08 1px, transparent 1px)", backgroundSize:"24px 24px", pointerEvents:"none", zIndex:0 }} />
-
       {/* Overlays */}
       {splash      && <SplashScreen onDone={() => setSplash(false)} />}
       {confirm     && <ConfirmDialog msg={confirm.msg} onConfirm={confirm.onConfirm} onCancel={()=>setConfirm(null)} />}
@@ -1775,218 +1693,242 @@ export default function App() {
       {showPlan    && <WeeklyPlanPanel onClose={()=>setShowPlan(false)} apiKey={apiKey} profile={profile} goals={goals} />}
 
       {/* HEADER */}
-      <div style={{ position:"sticky", top:0, zIndex:100, background:"rgba(0,0,0,0.85)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", borderBottom:`1px solid ${C.border}`, paddingTop:"max(env(safe-area-inset-top,12px),12px)", paddingBottom:12, paddingLeft:20, paddingRight:20 }}>
+      <div style={{ position:"sticky", top:0, zIndex:100, background:"rgba(10,10,11,0.85)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", paddingTop:"max(env(safe-area-inset-top,20px),20px)", paddingBottom:16, paddingLeft:20, paddingRight:20 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          {/* Logo + greeting */}
-          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <img src="/icon-512.png" alt="" style={{ width:32, height:32, borderRadius:9 }} />
-            <div>
-              <div style={{ fontSize:11, color:C.text3, fontWeight:500, lineHeight:1 }}>{getDateStr()}</div>
-              <div style={{ fontSize:17, fontWeight:900, letterSpacing:-0.3, lineHeight:1.3 }}>{getGreeting()}</div>
-            </div>
+          <div>
+            <h1 style={{ fontSize:22, fontWeight:900, color:C.text, margin:0, lineHeight:1.2, letterSpacing:-0.5 }}>Hola, {profile?.nombre || "Alex"} 👋</h1>
+            <p style={{ fontSize:12, color:C.text3, margin:0, marginTop:4 }}>{getDateStr()}</p>
           </div>
-          {/* Right side: streak + buttons */}
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            {streak > 0 && (
-              <div style={{ display:"flex", alignItems:"center", gap:4, background:C.surface2, borderRadius:10, padding:"5px 10px", border:`1px solid ${C.border}` }}>
-                <span style={{ fontSize:14 }}>🔥</span>
-                <span style={{ fontSize:13, fontWeight:800, color:C.orange }}>{streak}</span>
-              </div>
-            )}
-            <button onClick={()=>setShowHealth(true)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, width:40, height:40, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>🥗</button>
-            <button onClick={()=>setShowSet(true)}    style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, width:40, height:40, cursor:"pointer", fontSize:18, display:"flex", alignItems:"center", justifyContent:"center" }}>⚙️</button>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <button style={{ width:40, height:40, borderRadius:"50%", background:C.surface, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor:"pointer" }}>
+               <svg style={{ width:20, height:20, color:C.text2 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+               <div style={{ position:"absolute", top:10, right:12, width:6, height:6, background:C.greenNeon, borderRadius:"50%" }} />
+            </button>
+            <img src="https://i.pravatar.cc/100?img=11" alt="Perfil" style={{ width:40, height:40, borderRadius:"50%", border:`1px solid ${C.border}`, objectFit:"cover" }} />
           </div>
         </div>
       </div>
 
-      <div style={{ padding:"16px 20px 0", position:"relative", zIndex:1 }}>
-        {/* Stats card */}
-        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:22, padding:18, marginBottom:10, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.05)" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:16 }}>
-            {/* Calorie ring */}
-            <div style={{ position:"relative", width:90, height:90, flexShrink:0 }}>
-              <svg width="90" height="90" viewBox="0 0 90 90">
-                <circle cx="45" cy="45" r="38" fill="none" stroke={C.surface2} strokeWidth="8"/>
-                <circle cx="45" cy="45" r="38" fill="none" stroke={rc} strokeWidth="8"
-                  strokeDasharray={`${2*Math.PI*38}`} strokeDashoffset={`${2*Math.PI*38*(1-pct/100)}`}
-                  strokeLinecap="round" transform="rotate(-90 45 45)" style={{ transition:"stroke-dashoffset 0.8s ease, stroke 0.4s" }}/>
-              </svg>
-              <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-                <div style={{ fontSize:18, fontWeight:900, color:rc, lineHeight:1 }}>{Math.round(pct)}%</div>
+      <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
+        
+        {/* PREMIUM CALORIE CARD */}
+        <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
+            <div style={{ position:"absolute", inset:0, backgroundImage:`url(https://images.unsplash.com/photo-1601315379734-425a469078de?q=80&w=800&auto=format&fit=crop)`, backgroundSize:"cover", backgroundPosition:"center" }} />
+            <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.4) 100%)` }} />
 
-              </div>
-            </div>
-            {/* Numbers */}
-            <div style={{ flex:1 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:10 }}>
-                <div>
-                  <AnimatedNumber value={Math.round(totals.cal)} style={{ fontSize:26, fontWeight:900, lineHeight:1, display:"block" }} />
-                  <div style={{ fontSize:11, color:C.text3, marginTop:2 }}>consumidas</div>
+            <div style={{ position:"relative", zIndex:10, display:"flex", justifyContent:"space-between" }}>
+                <div style={{ flex:1 }}>
+                    <div style={{ fontSize:11, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>CONSUMIDAS</div>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
+                        <AnimatedNumber value={Math.round(totals.cal)} style={{ fontSize:48, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:-1 }} />
+                        <span style={{ fontSize:14, color:C.text2, fontWeight:600 }}>kcal</span>
+                    </div>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", background:"rgba(0,255,102,0.1)", border:"1px solid rgba(0,255,102,0.2)", borderRadius:100, marginTop:12 }}>
+                        <span style={{ color:C.greenNeon, fontSize:12 }}>✓</span>
+                        <span style={{ color:C.greenNeon, fontSize:11, fontWeight:700 }}>{Math.round(pct)}% de tu objetivo</span>
+                    </div>
+
+                    <div style={{ display:"flex", gap:24, marginTop:24 }}>
+                        <div>
+                            <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>RESTANTES</div>
+                            <div style={{ fontSize:16, fontWeight:900, color:C.greenNeon }}>{Math.max(0, remaining)} kcal</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>OBJETIVO</div>
+                            <div style={{ fontSize:16, fontWeight:900, color:C.text }}>{goals.calorias} kcal</div>
+                        </div>
+                    </div>
                 </div>
-                <div style={{ textAlign:"right" }}>
-                  <AnimatedNumber value={Math.abs(Math.round(remaining))} style={{ fontSize:26, fontWeight:900, color:remaining>=0?C.green:C.red, lineHeight:1, display:"block" }} />
-                  <div style={{ fontSize:11, color:C.text3, marginTop:2 }}>{remaining>=0?"restantes":"excedidas"}</div>
+
+                {/* Neon Ring */}
+                <div style={{ position:"relative", width:120, height:120, display:"flex", alignItems:"center", justifyItems:"center", flexShrink:0 }}>
+                    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform:"rotate(-90deg)", filter:"drop-shadow(0 0 8px rgba(0,255,102,0.4))" }}>
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8"/>
+                        <circle cx="60" cy="60" r="50" fill="none" stroke={C.greenNeon} strokeWidth="8" strokeLinecap="round"
+                          strokeDasharray="314" strokeDashoffset={`${314*(1-pct/100)}`}
+                          style={{ transition:"stroke-dashoffset 0.8s ease" }}/>
+                    </svg>
                 </div>
-              </div>
-              <div style={{ background:C.surface2, borderRadius:5, height:8, overflow:"hidden" }}>
-                <div style={{ width:`${pct}%`, height:"100%", background:`linear-gradient(90deg,${rc}88,${rc})`, borderRadius:5, transition:"width 0.7s ease, background 0.4s" }}/>
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6 }}>
-                <div style={{ fontSize:10, color:C.text3 }}>obj. {goals.calorias} kcal</div>
-                {badge && <div style={{ fontSize:11, fontWeight:700, color:badge.color }}>{badge.label}</div>}
-              </div>
             </div>
-          </div>
-          {/* Macros row: donut + bars */}
-          <div style={{ display:"flex", gap:14, alignItems:"center", paddingTop:14, borderTop:`1px solid ${C.border}` }}>
-            <DonutChart p={totals.p} c={totals.c} g={totals.g} goals={goals} />
-            <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8 }}>
-              <MacroBar label="Proteínas" value={totals.p} goal={goals.proteinas}     color={C.blue}  />
-              <MacroBar label="Carbos"    value={totals.c} goal={goals.carbohidratos} color={C.amber} />
-              <MacroBar label="Grasas"    value={totals.g} goal={goals.grasas}        color={C.pink}  />
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* Weekly budget + activity rec — only in Hoy tab */}
-      {tab === "hoy" && (
-      <div style={{ padding:"0 20px 4px", position:"relative", zIndex:1 }}>
-        <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"11px 14px", marginBottom:8 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
-            <span style={{ fontSize:12, color:C.text3, fontWeight:600 }}>Esta semana</span>
-            <span style={{ fontSize:12, fontWeight:700, color:weekRemaining>=0?C.blue:C.red }}>{weekRemaining>=0?`${Math.round(weekRemaining).toLocaleString()} kcal libres`:`${Math.round(Math.abs(weekRemaining)).toLocaleString()} excedidas`}</span>
-          </div>
-          <div style={{ background:C.surface2, borderRadius:4, height:5, overflow:"hidden" }}>
-            <div style={{ width:`${Math.min(weekCals/weeklyGoal*100,100)}%`, height:"100%", background:weekCals>weeklyGoal?C.red:C.blue, borderRadius:4, transition:"width 0.6s ease" }} />
-          </div>
-          <div style={{ fontSize:11, color:C.text3, marginTop:5 }}>{Math.round(weekCals).toLocaleString()} de {weeklyGoal.toLocaleString()} kcal</div>
+        {/* PREMIUM MACROS ROW */}
+        <div style={{ display:"flex", gap:12, marginBottom:24 }}>
+          <PremiumMacroCard label="Proteínas" value={totals.p} goal={goals.proteinas} color={C.blue} bgUrl="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=400&auto=format&fit=crop" />
+          <PremiumMacroCard label="Carbohidratos" value={totals.c} goal={goals.carbohidratos} color={C.amber} bgUrl="https://images.unsplash.com/photo-1586201375761-83865001e31c?q=80&w=400&auto=format&fit=crop" />
+          <PremiumMacroCard label="Grasas" value={totals.g} goal={goals.grasas} color={C.purple} bgUrl="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?q=80&w=400&auto=format&fit=crop" />
         </div>
-        {activityRec && (
-          <div style={{ background:`${activityRec.color}0f`, border:`1px solid ${activityRec.color}33`, borderRadius:12, padding:"9px 12px", marginBottom:4, display:"flex", gap:10, alignItems:"center" }}>
-            <span style={{ fontSize:16, flexShrink:0 }}>{activityRec.icon}</span>
-            <div style={{ fontSize:13, color:C.text2, lineHeight:1.4 }}>{activityRec.msg}</div>
-          </div>
-        )}
-      </div>
-      )}
 
-      <div style={{ padding:"8px 20px", position:"relative", zIndex:1 }}>
+        {/* PREMIUM ACTION BAR */}
+        <div style={{ display:"flex", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:6, marginBottom:24 }}>
+          <button onClick={()=>setShowHealth(true)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
+              <svg style={{ width:22, height:22, color:C.greenNeon, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10v4c0 3.3 2.7 6 6 6h6c3.3 0 6-2.7 6-6v-4M3 10V6c0-3.3 2.7-6 6-6h6c3.3 0 6 2.7 6 6v4M12 7v4M8 11h8"></path></svg>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Escanear<br/>alimento</span>
+          </button>
+          <div style={{ width:1, background:C.border, margin:"8px 0" }} />
+          <button onClick={() => setShowInputPanel(p=>!p)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
+              <svg style={{ width:22, height:22, color:C.blue, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Añadir<br/>comida</span>
+          </button>
+          <div style={{ width:1, background:C.border, margin:"8px 0" }} />
+          <button onClick={()=>setTab("actividad")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
+              <svg style={{ width:22, height:22, color:C.purple, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Ver<br/>análisis</span>
+          </button>
+          <div style={{ width:1, background:C.border, margin:"8px 0" }} />
+          <button onClick={()=>setShowSet(true)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
+              <svg style={{ width:22, height:22, color:C.greenNeon, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+              <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Definir<br/>objetivo</span>
+          </button>
+        </div>
 
         {/* HOY */}
         {tab==="hoy" && (
           <>
-            <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4, marginBottom:14, scrollSnapType:"x mandatory" }}>
-              {slots.map(sl => <button key={sl.id} onClick={()=>setSelSlot(sl.id)} style={{ ...S.pill(selSlot===sl.id), scrollSnapAlign:"start", flexShrink:0 }}>{sl.emoji} {sl.label}</button>)}
-            </div>
+            {/* INPUT PANEL (Toggled by Añadir comida) */}
+            {showInputPanel && (
+              <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:16, marginBottom:24, animation:"slideUp 0.3s ease" }}>
+                <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:12, marginBottom:8, scrollSnapType:"x mandatory" }}>
+                  {slots.map(sl => <button key={sl.id} onClick={()=>setSelSlot(sl.id)} style={{ ...S.pill(selSlot===sl.id), scrollSnapAlign:"start", flexShrink:0 }}>{sl.emoji} {sl.label}</button>)}
+                </div>
 
-            <div style={{ display:"flex", background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:4, marginBottom:14, gap:4 }}>
-              {[["photo","📸"],["text","✏️"],["voice","🎙️"]].map(([mode,label]) => (
-                <button key={mode} onClick={()=>setInputMode(mode)} style={{ flex:1, padding:"9px", border:"none", borderRadius:9, background:inputMode===mode?C.text:"transparent", color:inputMode===mode?C.bg:C.text3, fontWeight:700, fontSize:15, cursor:"pointer", transition:"all 0.2s" }}>{label}</button>
-              ))}
-            </div>
+                <div style={{ display:"flex", background:C.bg, border:`1px solid ${C.border}`, borderRadius:12, padding:4, marginBottom:14, gap:4 }}>
+                  {[["photo","📸 Foto"],["text","✏️ Texto"],["voice","🎙️ Voz"]].map(([mode,label]) => (
+                    <button key={mode} onClick={()=>setInputMode(mode)} style={{ flex:1, padding:"9px", border:"none", borderRadius:9, background:inputMode===mode?C.text:"transparent", color:inputMode===mode?C.bg:C.text3, fontWeight:700, fontSize:13, cursor:"pointer", transition:"all 0.2s" }}>{label}</button>
+                  ))}
+                </div>
 
-            {inputMode==="photo" && (
-              <div style={{ marginBottom:14 }}>
-                <input ref={fileRef} type="file" accept="image/*" onChange={e=>{processImage(e.target.files[0]);e.target.value="";}} style={{ display:"none" }} />
-                <input ref={camRef}  type="file" accept="image/*" capture="environment" onChange={e=>{processImage(e.target.files[0]);e.target.value="";}} style={{ display:"none" }} />
-                {preview ? (
-                  <div style={{ position:"relative", borderRadius:16, overflow:"hidden" }}>
-                    <img src={preview} alt="" style={{ width:"100%", maxHeight:240, objectFit:"cover", display:"block" }} />
-                  <div style={{ position:"absolute", inset:0, background:"#00000088", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-                    <div style={{ fontSize:32, animation:"spin 1s linear infinite", display:"inline-block" }}>🔍</div>
-                    <div style={{ marginTop:12, color:"#fff", fontWeight:700, fontSize:15 }}>Analizando con IA...</div>
-                    <div style={{ marginTop:8, width:160, height:4, borderRadius:2, background:"rgba(255,255,255,0.2)", overflow:"hidden" }}>
-                      <div style={{ height:"100%", width:"40%", background:C.blue, borderRadius:2, animation:"shimmerBar 1.2s ease-in-out infinite" }} />
-                    </div>
+                {inputMode==="photo" && (
+                  <div style={{ marginBottom:4 }}>
+                    <input ref={fileRef} type="file" accept="image/*" onChange={e=>{processImage(e.target.files[0]);e.target.value="";}} style={{ display:"none" }} />
+                    <input ref={camRef}  type="file" accept="image/*" capture="environment" onChange={e=>{processImage(e.target.files[0]);e.target.value="";}} style={{ display:"none" }} />
+                    {preview ? (
+                      <div style={{ position:"relative", borderRadius:16, overflow:"hidden" }}>
+                        <img src={preview} alt="" style={{ width:"100%", maxHeight:240, objectFit:"cover", display:"block" }} />
+                      <div style={{ position:"absolute", inset:0, background:"#00000088", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+                        <div style={{ fontSize:32, animation:"spin 1s linear infinite", display:"inline-block" }}>🔍</div>
+                        <div style={{ marginTop:12, color:"#fff", fontWeight:700, fontSize:15 }}>Analizando con IA...</div>
+                        <div style={{ marginTop:8, width:160, height:4, borderRadius:2, background:"rgba(255,255,255,0.2)", overflow:"hidden" }}>
+                          <div style={{ height:"100%", width:"40%", background:C.blue, borderRadius:2, animation:"shimmerBar 1.2s ease-in-out infinite" }} />
+                        </div>
+                      </div>
+                      </div>
+                    ) : (
+                      <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);processImage(e.dataTransfer.files[0]);}}
+                        style={{ border:`1.5px dashed ${dragOver?C.text:C.border2}`, borderRadius:16, padding:"24px 20px", textAlign:"center", background:C.bg, transition:"all 0.2s" }}>
+                        <div style={{ fontSize:30, marginBottom:12 }}>🍽️</div>
+                        <div style={{ fontSize:13, color:C.text2, fontWeight:600, marginBottom:16 }}>Añade una foto de tu comida</div>
+                        <div style={{ display:"flex", gap:10 }}>
+                          <button onClick={()=>camRef.current?.click()} style={{ flex:1, padding:"12px 8px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, color:C.text, fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+                            <span style={{ fontSize:24 }}>📷</span><span>Cámara</span>
+                          </button>
+                          <button onClick={()=>fileRef.current?.click()} style={{ flex:1, padding:"12px 8px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, color:C.text, fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+                            <span style={{ fontSize:24 }}>🖼️</span><span>Galería</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+
+                {inputMode==="text" && (
+                  <div style={{ marginBottom:4 }}>
+                    <textarea value={textInput} onChange={e=>setTextInput(e.target.value)}
+                      placeholder={"Describe lo que has comido...\nEj: pollo a la plancha con arroz"}
+                      style={{ ...S.inp, resize:"vertical", minHeight:100, lineHeight:1.6, fontSize:14 }} />
+                    <button onClick={()=>{ if(textInput.trim()) addMeal(textInput.trim()); }} disabled={analyzing||!textInput.trim()}
+                      style={{ width:"100%", marginTop:8, padding:"13px", background:analyzing||!textInput.trim()?C.surface2:C.text, border:"none", borderRadius:12, color:analyzing||!textInput.trim()?C.text3:C.bg, fontWeight:800, fontSize:14, cursor:analyzing||!textInput.trim()?"default":"pointer", transition:"all 0.2s" }}>
+                      {analyzing?"Calculando...":"Calcular nutrientes"}
+                    </button>
                   </div>
-                ) : (
-                  <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);processImage(e.dataTransfer.files[0]);}}
-                    style={{ border:`1.5px dashed ${dragOver?C.text:C.border2}`, borderRadius:16, padding:"24px 20px", textAlign:"center", background:C.surface, transition:"all 0.2s" }}>
-                    <div style={{ fontSize:30, marginBottom:12 }}>🍽️</div>
-                    <div style={{ fontSize:13, color:C.text2, fontWeight:600, marginBottom:16 }}>¿Cómo quieres añadir la foto?</div>
-                    <div style={{ display:"flex", gap:10 }}>
-                      <button onClick={()=>camRef.current?.click()} style={{ flex:1, padding:"12px 8px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, color:C.text, fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
-                        <span style={{ fontSize:24 }}>📷</span><span>Cámara</span>
+                )}
+
+                {inputMode==="voice" && (
+                  <div style={{ marginBottom:4 }}>
+                    <div style={{ background:C.bg, border:`1px solid ${C.border}`, borderRadius:16, padding:20, textAlign:"center" }}>
+                      <button onClick={listening?stopListening:startListening} disabled={analyzing}
+                        style={{ width:80, height:80, borderRadius:"50%", border:"none", cursor:analyzing?"default":"pointer", background:listening?C.red:C.text, color:listening?"#fff":C.bg, fontSize:32, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", boxShadow:listening?`0 0 0 8px ${C.red}33,0 0 0 16px ${C.red}11`:"none", transition:"all 0.3s", animation:listening?"pulse 1.5s ease-in-out infinite":"none" }}>
+                        {listening?"⏹":"🎙️"}
                       </button>
-                      <button onClick={()=>fileRef.current?.click()} style={{ flex:1, padding:"12px 8px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, color:C.text, fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
-                        <span style={{ fontSize:24 }}>🖼️</span><span>Galería</span>
-                      </button>
+                      <div style={{ fontSize:14, fontWeight:700, color:listening?C.red:C.text2, marginBottom:8 }}>
+                        {analyzing?"Analizando...":listening?"Escuchando... pulsa para parar":"Pulsa para hablar"}
+                      </div>
+                      
+                      {voiceText && (
+                        <div style={{ background:C.surface2, borderRadius:12, padding:"12px 14px", margin:"12px 0", textAlign:"left" }}>
+                          <div style={{ fontSize:11, color:C.text3, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Has dicho:</div>
+                          <div style={{ fontSize:14, color:C.text, lineHeight:1.5 }}>{voiceText}</div>
+                        </div>
+                      )}
+                      {voiceError && <div style={{ fontSize:12, color:C.red, marginBottom:12 }}>⚠️ {voiceError}</div>}
+                      {voiceText && !listening && (
+                        <div style={{ display:"flex", gap:8 }}>
+                          <button onClick={()=>setVoiceText("")} style={{ flex:1, padding:"11px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>Repetir</button>
+                          <button onClick={()=>{ addMeal(voiceText); setVoiceText(""); }} disabled={analyzing}
+                            style={{ flex:2, padding:"11px", background:analyzing?C.surface2:C.text, border:"none", borderRadius:12, color:analyzing?C.text3:C.bg, fontWeight:800, fontSize:13, cursor:analyzing?"default":"pointer" }}>
+                            {analyzing?"Analizando...":"✓ Analizar"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            {inputMode==="text" && (
-              <div style={{ marginBottom:14 }}>
-                <textarea value={textInput} onChange={e=>setTextInput(e.target.value)}
-                  placeholder={"Describe lo que has comido...\nEj: pollo a la plancha con arroz y ensalada"}
-                  style={{ ...S.inp, resize:"vertical", minHeight:100, lineHeight:1.6, fontSize:14 }} />
-                <button onClick={()=>{ if(textInput.trim()) addMeal(textInput.trim()); }} disabled={analyzing||!textInput.trim()}
-                  style={{ width:"100%", marginTop:8, padding:"13px", background:analyzing||!textInput.trim()?C.surface2:C.text, border:"none", borderRadius:12, color:analyzing||!textInput.trim()?C.text3:C.bg, fontWeight:800, fontSize:14, cursor:analyzing||!textInput.trim()?"default":"pointer", transition:"all 0.2s" }}>
-                  {analyzing?"Calculando...":"Calcular calorías y macros"}
-                </button>
-              </div>
-            )}
 
-            {inputMode==="voice" && (
-              <div style={{ marginBottom:14 }}>
-                <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:20, textAlign:"center" }}>
-                  <button onClick={listening?stopListening:startListening} disabled={analyzing}
-                    style={{ width:80, height:80, borderRadius:"50%", border:"none", cursor:analyzing?"default":"pointer", background:listening?C.red:C.text, color:listening?"#fff":C.bg, fontSize:32, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", boxShadow:listening?`0 0 0 8px ${C.red}33,0 0 0 16px ${C.red}11`:"none", transition:"all 0.3s", animation:listening?"pulse 1.5s ease-in-out infinite":"none" }}>
-                    {listening?"⏹":"🎙️"}
-                  </button>
-                  <div style={{ fontSize:14, fontWeight:700, color:listening?C.red:C.text2, marginBottom:8 }}>
-                    {analyzing?"Analizando...":listening?"Escuchando... pulsa para parar":"Pulsa para hablar"}
-                  </div>
-                  
-                  {voiceText && (
-                    <div style={{ background:C.surface2, borderRadius:12, padding:"12px 14px", margin:"12px 0", textAlign:"left" }}>
-                      <div style={{ fontSize:11, color:C.text3, marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Has dicho:</div>
-                      <div style={{ fontSize:14, color:C.text, lineHeight:1.5 }}>{voiceText}</div>
-                    </div>
-                  )}
-                  {voiceError && <div style={{ fontSize:12, color:C.red, marginBottom:12 }}>⚠️ {voiceError}</div>}
-                  {voiceText && !listening && (
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={()=>setVoiceText("")} style={{ flex:1, padding:"11px", background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:12, color:C.text2, fontWeight:700, fontSize:13, cursor:"pointer" }}>Repetir</button>
-                      <button onClick={()=>{ addMeal(voiceText); setVoiceText(""); }} disabled={analyzing}
-                        style={{ flex:2, padding:"11px", background:analyzing?C.surface2:C.text, border:"none", borderRadius:12, color:analyzing?C.text3:C.bg, fontWeight:800, fontSize:13, cursor:analyzing?"default":"pointer" }}>
-                        {analyzing?"Analizando...":"✓ Analizar"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-
+            {/* REGISTRO DE HOY (TIMELINE) */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, marginTop:8 }}>
+                <h3 style={{ fontSize:11, fontWeight:800, color:C.text3, letterSpacing:1.5, margin:0 }}>REGISTRO DE HOY</h3>
+                <button style={{ background:"none", border:"none", color:C.text3, fontSize:11, display:"flex", alignItems:"center", gap:4, cursor:"pointer" }}>Ver todo <span style={{fontSize:14}}>›</span></button>
+            </div>
 
             {meals.length>0 ? (
-              <>
-                <span style={{ ...S.label, marginTop:8 }}>Registrado hoy</span>
-                {meals.map(m => (
-                  <MealCard key={m.id} meal={m} apiKey={apiKey} slots={slots}
+              <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:24, padding:"20px", marginBottom:24 }}>
+                {meals.map((m, index) => (
+                  <MealCard 
+                    key={m.id} meal={m} apiKey={apiKey} slots={slots}
+                    isLast={index === meals.length - 1}
                     onDelete={()=>setConfirm({msg:`¿Eliminar esta comida?`,onConfirm:()=>{setMeals(p=>p.filter(x=>x.id!==m.id));setRecs(null);addToast("Comida eliminada");setConfirm(null);}})}
                     onUpdate={updated=>setMeals(p=>p.map(x=>x.id===updated.id?updated:x))}
                     profile={profile} goals={goals}
                   />
                 ))}
-                {futureSlots.length>0 && (
-                  <button onClick={fetchRec} disabled={loadingRec} style={{ width:"100%", padding:"14px", marginTop:4, background:loadingRec?C.surface:C.text, border:"none", borderRadius:14, color:loadingRec?C.text3:C.bg, fontWeight:800, fontSize:14, cursor:loadingRec?"default":"pointer", transition:"all 0.2s" }}>
-                    {loadingRec?"Calculando recomendaciones...":"✨ Ver recomendaciones para hoy"}
-                  </button>
-                )}
-              </>
+
+                {/* Timeline Footer Summary */}
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background:C.surface2, borderRadius:16, padding:16, marginTop:20, border:`1px solid ${C.border}` }}>
+                    <div style={{ textAlign:"center", flex:1 }}>
+                        <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>TOTAL CONSUMIDO</div>
+                        <div style={{ fontSize:18, fontWeight:900, color:C.text }}>{Math.round(totals.cal)} <span style={{ fontSize:12, color:C.text3, fontWeight:500 }}>kcal</span></div>
+                    </div>
+                    <div style={{ width:40, height:40, borderRadius:"50%", background:`rgba(0,255,102,0.1)`, display:"flex", alignItems:"center", justifyContent:"center", color:C.greenNeon, fontSize:18, flexShrink:0 }}>🔥</div>
+                    <div style={{ textAlign:"center", flex:1 }}>
+                        <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>TE FALTAN</div>
+                        <div style={{ fontSize:18, fontWeight:900, color:C.greenNeon }}>{Math.max(0, remaining)} <span style={{ fontSize:12, color:C.greenNeon, fontWeight:500 }}>kcal</span></div>
+                    </div>
+                </div>
+              </div>
             ) : (
-              <div style={{ textAlign:"center", padding:"32px 20px" }}>
-                <div style={{ fontSize:48, marginBottom:8 }}>🍽️</div>
+              <div style={{ textAlign:"center", padding:"32px 20px", background:C.surface, borderRadius:24, border:`1px solid ${C.border}`, marginBottom:24 }}>
+                <div style={{ fontSize:40, marginBottom:8, opacity:0.8 }}>🍽️</div>
                 <div style={{ fontSize:15, fontWeight:700, color:C.text2, marginBottom:6 }}>Sin comidas hoy</div>
-                <div style={{ fontSize:13, color:C.text3 }}>Usa los botones de arriba ↑ para registrar</div>
+                <div style={{ fontSize:13, color:C.text3 }}>Usa el botón "Añadir comida" para empezar</div>
               </div>
             )}
+
+            {/* CONSEJO DEL DÍA BANNER */}
+            <div style={{ position:"relative", borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, padding:16, marginTop:16, marginBottom:24, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <div style={{ position:"absolute", inset:0, backgroundImage:`url(https://images.unsplash.com/photo-1548839140-29a749e1bc4e?q=80&w=600&auto=format&fit=crop)`, backgroundSize:"cover", backgroundPosition:"center" }} />
+                <div style={{ position:"absolute", inset:0, background:`linear-gradient(to right, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.4) 100%)` }} />
+                <div style={{ position:"relative", zIndex:10, maxWidth:"70%" }}>
+                    <div style={{ fontSize:10, color:C.greenNeon, fontWeight:800, letterSpacing:1, marginBottom:4 }}>CONSEJO DEL DÍA</div>
+                    <div style={{ fontSize:16, fontWeight:900, color:C.text, marginBottom:4, lineHeight:1.2 }}>Hidratación<br/>inteligente</div>
+                    <div style={{ fontSize:11, color:C.text2, lineHeight:1.4 }}>Bebe al menos 2L de agua al día para mejorar tu rendimiento y bienestar.</div>
+                </div>
+                <div style={{ position:"relative", zIndex:10 }}>
+                    <div style={{ width:36, height:36, borderRadius:"50%", background:"rgba(0,255,102,0.2)", border:"1px solid rgba(0,255,102,0.3)", display:"flex", alignItems:"center", justifyContent:"center", color:C.greenNeon }}>➔</div>
+                </div>
+            </div>
           </>
         )}
 
@@ -1995,7 +1937,6 @@ export default function App() {
           <div>
             <span style={S.label}>Tu objetivo de actividad hoy</span>
 
-            {/* Main activity goal card */}
             <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:20, padding:20, marginBottom:12, boxShadow:"inset 0 1px 0 rgba(255,255,255,0.04)" }}>
               <div style={{ display:"flex", gap:16, marginBottom:16 }}>
                 <div style={{ flex:1, background:C.surface2, borderRadius:14, padding:"14px 12px", textAlign:"center" }}>
@@ -2017,14 +1958,13 @@ export default function App() {
               )}
             </div>
 
-            {/* Activity options */}
             <span style={S.label}>¿Cómo quieres movererte hoy?</span>
             {(() => {
               const w = parseFloat(profile?.peso) || 75;
               const target = profile?.caloriasQuemar || 300;
               const calcMins = (kcal, met) => Math.round(kcal / (met * w / 60));
               return [
-                { icon:"🏃", name:"Correr", met:9.8, kcal:target, color:C.green },
+                { icon:"🏃", name:"Correr", met:9.8, kcal:target, color:C.greenNeon },
                 { icon:"🏋️", name:"Gym / fuerza", met:5.0, kcal:target, color:C.blue },
                 { icon:"🚶", name:"Caminar", met:3.5, kcal:Math.round(target*0.6), color:C.amber },
                 { icon:"🚴", name:"Ciclismo", met:7.5, kcal:target, color:C.pink },
@@ -2048,7 +1988,6 @@ export default function App() {
               });
             })()}
 
-            {/* Weekly activity context */}
             <div style={{ ...S.card, marginTop:8 }}>
               <span style={S.label}>Contexto semanal</span>
               <div style={{ display:"flex", gap:10 }}>
@@ -2061,7 +2000,7 @@ export default function App() {
                   <div style={{ fontSize:10, color:C.text3 }}>{yesterdayExcess>0?"kcal exceso ayer":"kcal déficit ayer"}</div>
                 </div>
                 <div style={{ flex:1, textAlign:"center" }}>
-                  <div style={{ fontSize:18, fontWeight:900, color:C.green }}>{streak}🔥</div>
+                  <div style={{ fontSize:18, fontWeight:900, color:C.greenNeon }}>{streak}🔥</div>
                   <div style={{ fontSize:10, color:C.text3 }}>días de racha</div>
                 </div>
               </div>
@@ -2096,13 +2035,16 @@ export default function App() {
                     <div style={{ width:`${Math.min(selDayTotals.cal/goals.calorias*100,100)}%`, height:"100%", background:ringColor(selDayTotals.cal/goals.calorias*100), borderRadius:3 }}/>
                   </div>
                 </div>
-                {selDayData.meals.map((m,i) => <MealCard key={i} meal={m} apiKey={apiKey} onDelete={null} onUpdate={null} />)}
+                {/* Standard MealCards for calendar view */}
+                <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:24, padding:"20px", marginBottom:24 }}>
+                  {selDayData.meals.map((m,i) => <MealCard key={i} meal={m} apiKey={apiKey} onDelete={null} onUpdate={null} isLast={i === selDayData.meals.length - 1} />)}
+                </div>
               </div>
             ) : (!selDay && <div style={{ textAlign:"center", padding:"24px 20px", fontSize:12, color:C.text3 }}>Pulsa un día con punto de color para ver el detalle</div>)}
           </>
         )}
 
-        {/* RECOMENDACIONES */}
+        {/* RECOMENDACIONES / PLAN */}
         {tab==="recomendaciones" && (
           recs ? (
             <>
@@ -2118,36 +2060,43 @@ export default function App() {
             <div style={{ textAlign:"center", padding:"40px 20px" }}>
               <div style={{ fontSize:40 }}>✨</div>
               <div style={{ marginTop:12, fontSize:14, color:C.text3 }}>{meals.length===0?"Registra al menos una comida para obtener recomendaciones":"Pulsa el botón en la pestaña Hoy para generarlas"}</div>
+              {meals.length > 0 && futureSlots.length > 0 && (
+                <button onClick={fetchRec} disabled={loadingRec} style={{ width:"100%", padding:"14px", marginTop:24, background:loadingRec?C.surface:C.text, border:"none", borderRadius:14, color:loadingRec?C.text3:C.bg, fontWeight:800, fontSize:14, cursor:loadingRec?"default":"pointer", transition:"all 0.2s" }}>
+                  {loadingRec?"Calculando recomendaciones...":"Ver recomendaciones para hoy"}
+                </button>
+              )}
             </div>
           )
         )}
       </div>
 
-      {/* BOTTOM NAV */}
-      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(0,0,0,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"6px 8px", paddingBottom:"max(env(safe-area-inset-bottom,8px),8px)", display:"flex", gap:2, zIndex:100 }}>
-        {[
-          ["hoy",    "🍌", "Hoy"],
-          ["actividad", "🏃", "Actividad"],
-          ["calendario", "📅", "Historial"],
-          ["recomendaciones", "✨", "Plan"],
-        ].map(([id, icon, label]) => (
-          <button key={id} onClick={()=>setTab(id)} style={{
-            flex:1, padding:"7px 4px", border:"none", borderRadius:12, cursor:"pointer",
-            background: tab===id ? `${C.blue}22` : "transparent",
-            display:"flex", flexDirection:"column", alignItems:"center", gap:2,
-            transition:"all 0.2s",
-          }}>
-            <span style={{ fontSize:18 }}>{icon}</span>
-            <span style={{ fontSize:9, fontWeight: tab===id ? 800 : 600, color: tab===id ? C.blue : C.text3 }}>{label}</span>
-          </button>
-        ))}
-        <button onClick={()=>setShowPlan(true)} style={{ flex:1, padding:"7px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-          <span style={{ fontSize:18 }}>🗓️</span>
-          <span style={{ fontSize:9, fontWeight:600, color:C.text3 }}>Menús</span>
+      {/* PREMIUM BOTTOM NAV */}
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"rgba(10,10,11,0.95)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", borderTop:`1px solid ${C.border}`, padding:"10px 8px", paddingBottom:"max(env(safe-area-inset-bottom,12px),12px)", display:"flex", justifyContent:"space-between", zIndex:100 }}>
+        {/* Hoy */}
+        <button onClick={()=>setTab("hoy")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
+          <svg style={{ width:24, height:24, color:tab==="hoy"?C.greenNeon:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="hoy"?"2":"1.5"} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          <span style={{ fontSize:10, fontWeight: tab==="hoy" ? 700 : 500, color: tab==="hoy" ? C.text : C.text3 }}>Hoy</span>
+          {tab==="hoy" && <div style={{ position:"absolute", bottom:0, width:30, height:3, background:C.greenNeon, borderRadius:"4px 4px 0 0", boxShadow:`0 -2px 8px ${C.greenNeon}` }} />}
         </button>
-        <button onClick={()=>setShowCoach(true)} style={{ flex:1, padding:"7px 4px", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
-          <span style={{ fontSize:18 }}>🤖</span>
-          <span style={{ fontSize:9, fontWeight:600, color:C.text3 }}>Coach</span>
+        {/* Actividad */}
+        <button onClick={()=>setTab("actividad")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
+          <svg style={{ width:24, height:24, color:tab==="actividad"?C.text:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="actividad"?"2":"1.5"} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+          <span style={{ fontSize:10, fontWeight: tab==="actividad" ? 700 : 500, color: tab==="actividad" ? C.text : C.text3 }}>Actividad</span>
+        </button>
+        {/* Historial */}
+        <button onClick={()=>setTab("calendario")} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
+          <svg style={{ width:24, height:24, color:tab==="calendario"?C.text:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={tab==="calendario"?"2":"1.5"} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span style={{ fontSize:10, fontWeight: tab==="calendario" ? 700 : 500, color: tab==="calendario" ? C.text : C.text3 }}>Historial</span>
+        </button>
+        {/* Plan / Menús */}
+        <button onClick={()=>setShowPlan(true)} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
+          <svg style={{ width:24, height:24, color:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <span style={{ fontSize:10, fontWeight: 500, color: C.text3 }}>Plan</span>
+        </button>
+        {/* Coach */}
+        <button onClick={()=>setShowCoach(true)} style={{ flex:1, padding:"6px 0", border:"none", borderRadius:12, cursor:"pointer", background:"transparent", display:"flex", flexDirection:"column", alignItems:"center", gap:4, transition:"all 0.2s" }}>
+          <svg style={{ width:24, height:24, color:C.text3 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+          <span style={{ fontSize:10, fontWeight: 500, color: C.text3 }}>Coach</span>
         </button>
       </div>
 
@@ -2158,15 +2107,15 @@ export default function App() {
         @keyframes tickPop   { from{opacity:0;transform:scale(0.7);}to{opacity:1;transform:scale(1);} }
         @keyframes shimmerBar{ 0%{transform:translateX(-200%);}100%{transform:translateX(300%);} }
         @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes scanline  { 0%{top:4px} 50%{top:calc(100% - 6px)} 100%{top:4px} }
         *{box-sizing:border-box;margin:0;padding:0;}
-        html,body{background:#000000!important;}
-        textarea::placeholder{color:#333;}
-        input::placeholder{color:#333;}
+        html,body{background:#0a0a0b!important;}
+        textarea::placeholder{color:#71717a;}
+        input::placeholder{color:#71717a;}
         input[type=number]::-webkit-inner-spin-button{opacity:0.3;}
         ::-webkit-scrollbar{width:3px;}
-        ::-webkit-scrollbar-thumb{background:#222;border-radius:4px;}
+        ::-webkit-scrollbar-thumb{background:#27272a;border-radius:4px;}
         button:active{transform:scale(0.96);transition:transform 0.1s;}
       `}</style>
     </div>
