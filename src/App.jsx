@@ -27,15 +27,6 @@ const C = {
   },
 };
 
-// Status badge helper
-const getStatusBadge = (pct, remaining) => {
-  if (pct === 0) return null;
-  if (remaining < -100) return { label:"🚀 Superado", color:C.red };
-  if (remaining < 100)  return { label:"🎯 En objetivo", color:C.greenNeon };
-  if (pct > 60)         return { label:"⚡ En camino", color:C.amber };
-  return { label:"💪 Empieza ya", color:C.text3 };
-};
-
 // Streak calculation
 const getStreak = (history) => {
   let streak = 0;
@@ -55,14 +46,6 @@ const slotColor = (slotLabel) => C.slotColors[slotLabel] || C.blue;
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const localDateStr = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const ringColor = (pct) => pct < 50 ? C.greenNeon : pct < 80 ? C.yellow : pct < 100 ? C.orange : C.red;
-
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h < 6)  return "Buenas noches";
-  if (h < 13) return "Buenos días";
-  if (h < 20) return "Buenas tardes";
-  return "Buenas noches";
-};
 
 const getDateStr = () => {
   const d = new Date();
@@ -188,8 +171,7 @@ async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
     : [{ type:"text", text:`Analiza: ${text}` }];
   return callClaude(apiKey,
     `Nutricionista experto. ${pCtx}
-REGLAS ESTRICTAS: cuenta exactamente lo visible, tamaños realistas (tostadita espelta≈15g, rebanada≈40g). 
-La "descripcion" DEBE SER SOLO EL NOMBRE GENERAL DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con aguacate"). ESTÁ PROHIBIDO EXPLICAR NADA en la descripción.
+REGLAS ESTRICTAS: La 'descripcion' DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Pollo a la plancha con patatas"). NUNCA des explicaciones ni detalles del cambio en la descripción. Los detalles de los alimentos van en la lista de ingredientes ("platos").
 SOLO JSON en una línea sin backticks.
 Formato: {"platos":[{"nombre":"ingrediente exacto+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
 Sin comida: {"error":"No se detectó comida"}`,
@@ -812,7 +794,7 @@ function MealCard({ meal, onDelete, onUpdate, apiKey, slots, profile, goals, isL
       const ctx = profile && goals ? buildCtx(profile, goals, [meal], {}) : "";
       const result = await callClaude(apiKey,
         `Nutricionista. Corrige la comida según la instrucción. ${ctx}
-REGLA ESTRICTA: La "descripcion" DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con mermelada"). NUNCA des explicaciones ni detalles del cambio en la descripción. Los detalles de los alimentos van en la lista de ingredientes ("platos").
+REGLA ESTRICTA: La 'descripcion' DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con mermelada"). NUNCA des explicaciones ni detalles del cambio en la descripción. Los detalles de los alimentos van en la lista de ingredientes ("platos").
 SOLO JSON en una línea sin backticks.
 Formato: {"platos":[{"nombre":"nombre exacto modificado+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto"}`,
         [{ type:"text", text:`Comida actual: ${meal.descripcion}. Ingredientes: ${(meal.platos||[]).map(p=>`${p.nombre}(${p.calorias}kcal)`).join(", ")}. Instrucción del usuario para corregir: ${chatMsg.trim()}` }], 800);
@@ -1319,7 +1301,7 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
     }
   };
 
-  const sc=result?.puntuacion||0, col=scoreColor(sc), circ=2*Math.PI*52;
+  const sc=result?.puntuacion||0, circ=2*Math.PI*52;
 
   return (
     <div style={{ position:"fixed", inset:0, background:"#000000f0", zIndex:300, overflowY:"auto" }}>
@@ -1419,18 +1401,25 @@ Puntuacion entero 1-100. Macros: alto, medio o bajo. Valora especialmente el rat
                 <div style={{ position:"relative", width:120, height:120, flexShrink:0 }}>
                   <svg width="120" height="120" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="52" fill="none" stroke={C.surface2} strokeWidth="8"/>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke={col} strokeWidth="8"
+                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#healthGradient)" strokeWidth="8"
                       strokeDasharray={`${circ}`} strokeDashoffset={`${circ*(1-sc/100)}`}
                       strokeLinecap="round" transform="rotate(-90 60 60)" style={{ transition:"stroke-dashoffset 1s ease" }}/>
+                    <defs>
+                      <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#ef4444" />
+                        <stop offset="50%" stopColor="#eab308" />
+                        <stop offset="100%" stopColor="#00ff66" />
+                      </linearGradient>
+                    </defs>
                   </svg>
                   <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
-                    <div style={{ fontSize:28, fontWeight:900, color:col, lineHeight:1 }}>{sc}</div>
+                    <div style={{ fontSize:28, fontWeight:900, color:scoreColor(sc), lineHeight:1 }}>{sc}</div>
                     <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>/100</div>
                   </div>
                 </div>
                 <div style={{ flex:1 }}>
                   <div style={{ fontSize:11, color:C.text3, marginBottom:4 }}>{result.nombre}</div>
-                  <div style={{ fontSize:22, fontWeight:900, color:col, marginBottom:6 }}>{result.categoria||(sc>=75?"Excelente":sc>=50?"Buena":sc>=30?"Regular":"Evitar")}</div>
+                  <div style={{ fontSize:22, fontWeight:900, color:scoreColor(sc), marginBottom:6 }}>{result.categoria||(sc>=75?"Excelente":sc>=50?"Buena":sc>=30?"Regular":"Evitar")}</div>
                   <div style={{ fontSize:13, color:C.text2, lineHeight:1.4 }}>{result.resumen}</div>
                 </div>
               </div>
@@ -1693,6 +1682,22 @@ export default function App() {
       {showCoach   && <AICoachPanel onClose={()=>setShowCoach(false)} apiKey={apiKey} profile={profile} goals={goals} history={history} meals={meals} setGoals={setGoals} />}
       {showPlan    && <WeeklyPlanPanel onClose={()=>setShowPlan(false)} apiKey={apiKey} profile={profile} goals={goals} />}
 
+      {/* Futuristic FAB (Añadir comida) - image_1.png */}
+      <button onClick={() => setShowInputPanel(p=>!p)} style={{
+        position: "fixed", bottom: "max(calc(env(safe-area-inset-bottom, 12px) + 70px), 82px)", right: "20px",
+        width: "60px", height: "60px", borderRadius: "50%",
+        background: "rgba(0, 0, 0, 0.4)",
+        border: `2px solid ${C.greenNeon}`,
+        boxShadow: `0 0 20px ${C.greenNeon}`,
+        color: C.greenNeon, fontSize: "30px", fontWeight: "300",
+        cursor: "pointer", zIndex: "900", // Overlay over everything
+        display: "flex", alignItems: "center", justifyContent: "center",
+        backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+        animation: "fabPulse 3s infinite",
+      }}>
+        +
+      </button>
+
       {/* HEADER */}
       <div style={{ position:"sticky", top:0, zIndex:100, background:"rgba(10,10,11,0.85)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)", paddingTop:"max(env(safe-area-inset-top,20px),20px)", paddingBottom:16, paddingLeft:20, paddingRight:20 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -1711,27 +1716,29 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD */}
+        {/* PREMIUM CALORIE CARD - image_866bd7.png */}
         <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
-            <div style={{ position:"absolute", inset:0, backgroundImage:`url(https://images.unsplash.com/photo-1601315379734-425a469078de?q=80&w=800&auto=format&fit=crop)`, backgroundSize:"cover", backgroundPosition:"center" }} />
-            <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.4) 100%)` }} />
+            {/* Dark Concrete Texture Background */}
+            <div style={{ position:"absolute", inset:0, backgroundImage:`url(https://images.unsplash.com/photo-1599423300746-b62533397364?q=80&w=800&auto=format&fit=crop)`, backgroundSize:"cover", backgroundPosition:"center" }} />
+            {/* Gradient Overlay for texture */}
+            <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
 
             <div style={{ position:"relative", zIndex:10, display:"flex", justifyContent:"space-between" }}>
                 <div style={{ flex:1 }}>
-                    <div style={{ fontSize:11, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>CONSUMIDAS</div>
+                    <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>CONSUMIDAS</div>
                     <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
                         <AnimatedNumber value={Math.round(totals.cal)} style={{ fontSize:48, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:-1 }} />
                         <span style={{ fontSize:14, color:C.text2, fontWeight:600 }}>kcal</span>
                     </div>
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", background:"rgba(0,255,102,0.1)", border:"1px solid rgba(0,255,102,0.2)", borderRadius:100, marginTop:12 }}>
-                        <span style={{ color:C.greenNeon, fontSize:12 }}>✓</span>
-                        <span style={{ color:C.greenNeon, fontSize:11, fontWeight:700 }}>{Math.round(pct)}% de tu objetivo</span>
+                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", background:"rgba(0,183,255,0.1)", border:"1px solid rgba(0,183,255,0.2)", borderRadius:100, marginTop:12 }}>
+                        <span style={{ color:"#00b7ff", fontSize:12 }}>✓</span>
+                        <span style={{ color:"#00b7ff", fontSize:11, fontWeight:700 }}>{Math.round(pct)}% de tu objetivo</span>
                     </div>
 
                     <div style={{ display:"flex", gap:24, marginTop:24 }}>
                         <div>
                             <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>RESTANTES</div>
-                            <div style={{ fontSize:16, fontWeight:900, color:C.greenNeon }}>{Math.max(0, remaining)} kcal</div>
+                            <div style={{ fontSize:16, fontWeight:900, color:"#fbbf24" }}>{Math.max(0, remaining)} kcal</div>
                         </div>
                         <div>
                             <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>OBJETIVO</div>
@@ -1740,13 +1747,28 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* Neon Ring */}
+                {/* Futuristic Neo Ring */}
                 <div style={{ position:"relative", width:120, height:120, display:"flex", alignItems:"center", justifyItems:"center", flexShrink:0 }}>
-                    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform:"rotate(-90deg)", filter:"drop-shadow(0 0 8px rgba(0,255,102,0.4))" }}>
+                    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform:"rotate(-90deg)", filter:"drop-shadow(0 0 12px rgba(6, 182, 212, 0.6))" }}>
+                        {/* Define Gradient */}
+                        <defs>
+                          <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#06b6d4" /> {/* Cyan */}
+                            <stop offset="100%" stopColor="#fbbf24" /> {/* Amber */}
+                          </linearGradient>
+                        </defs>
+                        
+                        {/* Base Ring (Gray) */}
                         <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8"/>
-                        <circle cx="60" cy="60" r="50" fill="none" stroke={C.greenNeon} strokeWidth="8" strokeLinecap="round"
+                        
+                        {/* Progress Ring (Gradient) */}
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="url(#ringGradient)" strokeWidth="8" strokeLinecap="round"
                           strokeDasharray="314" strokeDashoffset={`${314*(1-pct/100)}`}
                           style={{ transition:"stroke-dashoffset 0.8s ease" }}/>
+                          
+                        {/* Animated Flow Dots/Lines (Moving) */}
+                        <path d="M 60 10 A 50 50 0 0 1 110 60" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="5 300" strokeDashoffset="0" style={{ animation: "ringFlow 1.5s linear infinite", opacity: 0.3 }}/>
+                        <path d="M 10 60 A 50 50 0 0 1 60 110" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="8 250" strokeDashoffset="0" style={{ animation: "ringFlow 2s linear infinite", opacity: 0.15, animationDelay: "-0.5s" }}/>
                     </svg>
                 </div>
             </div>
@@ -2021,7 +2043,7 @@ export default function App() {
                 <div style={{ ...S.card, marginBottom:12 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", marginBottom:12 }}>
                     <div style={{ textAlign:"center" }}>
-                      <div style={{ fontSize:22, fontWeight:900, color:ringColor(selDayTotals.cal/goals.calorias*100) }}>{Math.round(selDayTotals.cal)}</div>
+                      <div style={{ fontSize:22, fontWeight:900, color:ringColor(selDayTotals.cal/goals.calorias*100) }}>{Math.round(selDayTotals.cal) }</div>
                       <div style={{ fontSize:10, color:C.text3 }}>kcal</div>
                     </div>
                     {[["P",selDayTotals.p,C.blue],["C",selDayTotals.c,C.amber],["G",selDayTotals.g,C.pink]].map(([l,v,col]) => (
@@ -2059,7 +2081,7 @@ export default function App() {
           ) : (
             <div style={{ textAlign:"center", padding:"40px 20px" }}>
               <div style={{ fontSize:40 }}>✨</div>
-              <div style={{ marginTop:12, fontSize:14, color:C.text3 }}>{meals.length===0?"Registra al menos una comida para obtener recomendaciones":"Pulsa el botón en la pestaña Hoy para generarlas"}</div>
+              <div style={{ marginTop:12, fontSize:14, color:C.text3 }}>{meals.length===0?"Registra al menos una comida para obtener recomendaciones":"Pulsa el botón FAB (+) en Hoy para generarlas"}</div>
               {meals.length > 0 && futureSlots.length > 0 && (
                 <button onClick={fetchRec} disabled={loadingRec} style={{ width:"100%", padding:"14px", marginTop:24, background:loadingRec?C.surface:C.text, border:"none", borderRadius:14, color:loadingRec?C.text3:C.bg, fontWeight:800, fontSize:14, cursor:loadingRec?"default":"pointer", transition:"all 0.2s" }}>
                   {loadingRec?"Calculando recomendaciones...":"Ver recomendaciones para hoy"}
@@ -2103,8 +2125,9 @@ export default function App() {
       <style>{`
         @keyframes spin      { from{transform:rotate(0deg);}to{transform:rotate(360deg);} }
         @keyframes pulse     { 0%,100%{box-shadow:0 0 0 8px ${C.red}33,0 0 0 16px ${C.red}11;}50%{box-shadow:0 0 0 12px ${C.red}44,0 0 0 24px ${C.red}11;} }
+        @keyframes fabPulse   { 0%, 100% { transform: scale(1); box-shadow: 0 0 20px ${C.greenNeon}; } 50% { transform: scale(1.08); box-shadow: 0 0 30px ${C.greenNeon}; } }
+        @keyframes ringFlow   { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -350; } }
         @keyframes fadeIn    { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);} }
-        @keyframes tickPop   { from{opacity:0;transform:scale(0.7);}to{opacity:1;transform:scale(1);} }
         @keyframes shimmerBar{ 0%{transform:translateX(-200%);}100%{transform:translateX(300%);} }
         @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -2113,7 +2136,6 @@ export default function App() {
         html,body{background:#0a0a0b!important;}
         textarea::placeholder{color:#71717a;}
         input::placeholder{color:#71717a;}
-        input[type=number]::-webkit-inner-spin-button{opacity:0.3;}
         ::-webkit-scrollbar{width:3px;}
         ::-webkit-scrollbar-thumb{background:#27272a;border-radius:4px;}
         button:active{transform:scale(0.96);transition:transform 0.1s;}
