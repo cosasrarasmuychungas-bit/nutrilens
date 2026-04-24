@@ -14,28 +14,28 @@ const EMOJIS = ["☀️","🌤️","🌞","🌥️","🌙","🍳","🥗","🍱",
 const DAYS   = ["L","M","X","J","V","S","D"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-// 20 Imágenes de fondo relajantes y oscuras (Montañas, niebla, noche, texturas)
+// 20 Imágenes de fondo relajantes, oscuras y de alta calidad
 const BG_CAROUSEL = [
-  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1476820865390-c52aeebb9891?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1500534623283-258267364177?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1497449985806-ea5978a63ce5?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1418065460487-3ce7eb3694f4?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1504280365736-233bb9fa4c7b?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1428908728789-d2de8ae1e5e8?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1503195232765-a83d73db3900?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1439853949703-ff5a8d2503aa?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1458668383970-45f4df210515?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop"
+  "https://images.unsplash.com/photo-1506744626753-140026e64d7a?q=80&w=800&auto=format&fit=crop", // Montañas oscuras
+  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?q=80&w=800&auto=format&fit=crop", // Noche/Naturaleza
+  "https://images.unsplash.com/photo-1434725039720-aaad6dd32fac?q=80&w=800&auto=format&fit=crop", // Paisaje niebla
+  "https://images.unsplash.com/photo-1516214104703-d25078014692?q=80&w=800&auto=format&fit=crop", // Lago relajante
+  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop", // Bosque oscuro
+  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?q=80&w=800&auto=format&fit=crop", // Aurora y pinos
+  "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop", // Bosque desde arriba
+  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=800&auto=format&fit=crop", // Montaña brumosa
+  "https://images.unsplash.com/photo-1476820865390-c52aeebb9891?q=80&w=800&auto=format&fit=crop", // Cima montañas
+  "https://images.unsplash.com/photo-1500534623283-258267364177?q=80&w=800&auto=format&fit=crop", // Lago y montañas
+  "https://images.unsplash.com/photo-1497449985806-ea5978a63ce5?q=80&w=800&auto=format&fit=crop", // Nubes grises
+  "https://images.unsplash.com/photo-1418065460487-3ce7eb3694f4?q=80&w=800&auto=format&fit=crop", // Pinos y niebla
+  "https://images.unsplash.com/photo-1504280365736-233bb9fa4c7b?q=80&w=800&auto=format&fit=crop", // Montañas silueta
+  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop", // Cordillera oscura
+  "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop", // Arboles de noche
+  "https://images.unsplash.com/photo-1428908728789-d2de8ae1e5e8?q=80&w=800&auto=format&fit=crop", // Rio sereno
+  "https://images.unsplash.com/photo-1503195232765-a83d73db3900?q=80&w=800&auto=format&fit=crop", // Textura piedra natural
+  "https://images.unsplash.com/photo-1439853949703-ff5a8d2503aa?q=80&w=800&auto=format&fit=crop", // Lago reflejo oscuro
+  "https://images.unsplash.com/photo-1458668383970-45f4df210515?q=80&w=800&auto=format&fit=crop", // Lago cristalino
+  "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop"  // Naturaleza profunda
 ];
 
 const C = {
@@ -191,20 +191,19 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
 async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
   const pCtx = profile ? `Usuario: objetivo=${profile.objetivo||"salud"}, dieta=${profile.dieta||"sin restricciones"}, restricciones=${profile.restricciones||"ninguna"}, peso=${profile.peso||75}kg.` : "";
   const userContent = base64
-    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza con máxima precisión y rigor nutricional." }]
-    : [{ type:"text", text:`Analiza: ${text}` }];
+    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con máxima precisión nutricional." }]
+    : [{ type:"text", text:`Analiza este texto de comida: ${text}` }];
   return callClaude(apiKey,
-    `Eres una IA nutricionista de élite. Analiza la imagen o texto con MÁXIMA PRECISIÓN. ${pCtx}
-REGLAS ESTRICTAS DE ANÁLISIS:
-1. Identifica CADA ingrediente visible. Sé deductivo: si ves una salsa, suma gramos de aceite/grasa. Si está frito, asume aceite absorbido.
-2. Estima cantidades en gramos de forma realista basándote en la porción visual (ej: una cucharada de aceite son 15g, una rebanada de pan normal son 30-40g).
-3. Calcula macros exactos según bases de datos oficiales (USDA).
-4. La propiedad "descripcion" DEBE SER SOLO UN NOMBRE GENÉRICO DEL PLATO, ULTRA CORTO (máx 4 palabras, ej: "Pollo con arroz y verduras"). CERO EXPLICACIONES EN ESTE CAMPO.
-5. En la propiedad "nombre" de cada plato, pon el ingrediente y los gramos que has deducido (ej: "Pechuga de pollo (150g)").
-RESPONDE SÓLO CON UN JSON VÁLIDO EN UNA LÍNEA (sin markdown, sin comillas invertidas, sin texto previo ni posterior).
+    `Eres un nutricionista experto y un sistema de visión artificial avanzado. Tu tarea es analizar los alimentos. ${pCtx}
+REGLAS VITALES Y ESTRICTAS:
+1. IDENTIFICACIÓN PROFUNDA: Detecta cada ingrediente visible. Si hay salsas, aderezos o métodos de cocción (frito, empanado, a la plancha con aceite), estima y SUMA esas calorías ocultas (aceites/grasas).
+2. CANTIDADES REALISTAS: Asigna gramos razonables basados en escalas estándar visuales (ej: 1 huevo=60g, 1 tostada normal=35g, cucharada de aceite=15g, filete mediano=150g).
+3. DESCRIPCIÓN MINIMALISTA: La propiedad "descripcion" debe ser SOLO el nombre del plato genérico en 3 a 5 palabras máximo (ej: "Salmón con arroz y verduras"). ¡CERO explicaciones en este campo!
+4. ESTRUCTURA DE PLATOS: En la lista "platos", el "nombre" debe incluir el ingrediente exacto y el peso estimado deducido (ej: "Arroz blanco cocido (150g)").
+Genera SOLO un JSON válido en una sola línea. NADA de backticks, ni markdown, ni texto extra.
 FORMATO EXACTO:
-{"platos":[{"nombre":"ingrediente exacto (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
-Si NO detectas comida en absoluto: {"error":"No se detectó comida en la imagen."}`,
+{"platos":[{"nombre":"ingrediente exacto (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase de 10 palabras si encaja con su objetivo"}
+Si NO detectas comida: {"error":"No se detectó comida en la imagen."}`,
     userContent, 1000);
 }
 
@@ -1539,23 +1538,18 @@ export default function App() {
   
   const [showInputPanel, setShowInputPanel] = useState(false);
   
-  // Lógica Robusta del Carrusel
-  const [bgIdx, setBgIdx] = useState(() => Math.floor(Math.random() * BG_CAROUSEL.length));
+  // -- LÓGICA DE CARRUSEL CROSSFADE ANTI-BLACKSCREEN --
+  // Estado para saber qué índice de BG_CAROUSEL estamos mostrando actualmente
+  const [bgIdx, setBgIdx] = useState(0);
 
   useEffect(() => {
-    // Calcular la siguiente foto
-    const nextIdx = (bgIdx + 1) % BG_CAROUSEL.length;
-    // Pre-cargar la siguiente imagen de forma invisible en el navegador
-    const img = new Image();
-    img.src = BG_CAROUSEL[nextIdx];
-    
-    // Cambiar la imagen actual cada 15 segundos
-    const timer = setTimeout(() => {
-      setBgIdx(nextIdx);
-    }, 15000);
-    
-    return () => clearTimeout(timer);
-  }, [bgIdx]);
+    // Cambiar la imagen cada 10 segundos
+    const timer = setInterval(() => {
+      setBgIdx((prev) => (prev + 1) % BG_CAROUSEL.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
+  // ----------------------------------------------------
 
   const fileRef  = useRef();
   const camRef   = useRef();
@@ -1817,12 +1811,38 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD - Carrusel Random con Fallback */}
-        <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)" }}>
-            {/* Dynamic Carousel Texture Background con color de fallback para evitar el negro absoluto */}
-            <div style={{ position:"absolute", inset:0, backgroundColor:"#1a1c23", backgroundImage: `url(${BG_CAROUSEL[bgIdx]})`, backgroundSize:"cover", backgroundPosition:"center", transition: "background-image 0.8s ease-in-out" }} />
-            {/* Gradient Overlay for texture */}
-            <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
+        {/* PREMIUM CALORIE CARD - Carrusel con Crossfade Inteligente */}
+        <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)", backgroundColor:"#1a1c23" }}>
+            
+            {/* Capas de imágenes superpuestas (Ventana deslizante) */}
+            {BG_CAROUSEL.map((url, i) => {
+              // Solo montamos las imágenes actuales, anteriores y siguientes en el DOM
+              // para no colapsar la conexión con 20 descargas a la vez.
+              const isCurrent = i === bgIdx;
+              const isNext = i === (bgIdx + 1) % BG_CAROUSEL.length;
+              const isPrev = i === (bgIdx - 1 + BG_CAROUSEL.length) % BG_CAROUSEL.length;
+
+              if (!isCurrent && !isNext && !isPrev) return null;
+
+              return (
+                <div 
+                  key={url}
+                  style={{ 
+                    position:"absolute", 
+                    inset:0, 
+                    backgroundImage:`url(${url})`, 
+                    backgroundSize:"cover", 
+                    backgroundPosition:"center",
+                    opacity: isCurrent ? 1 : 0,
+                    transition: "opacity 1.5s ease-in-out",
+                    zIndex: 0
+                  }} 
+                />
+              );
+            })}
+
+            {/* Gradient Overlay for texture (siempre por encima de las fotos) */}
+            <div style={{ position:"absolute", inset:0, zIndex:1, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
 
             <div style={{ position:"relative", zIndex:10, display:"flex", justifyContent:"space-between" }}>
                 <div style={{ flex:1 }}>
