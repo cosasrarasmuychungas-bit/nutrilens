@@ -188,9 +188,10 @@ async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
     : [{ type:"text", text:`Analiza: ${text}` }];
   return callClaude(apiKey,
     `Nutricionista experto. ${pCtx}
-REGLAS FOTOS: cuenta exactamente lo visible (3 tostaditas≠rebanadas grandes), tamaños realistas (tostadita espelta≈15g, rebanada≈40g, tortita arroz≈9g), cuenta unidades exactas de fruta, lista todos los ingredientes por separado.
+REGLAS ESTRICTAS: cuenta exactamente lo visible, tamaños realistas (tostadita espelta≈15g, rebanada≈40g). 
+La "descripcion" DEBE SER SOLO EL NOMBRE GENERAL DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con aguacate"). ESTÁ PROHIBIDO EXPLICAR NADA en la descripción.
 SOLO JSON en una línea sin backticks.
-Formato: {"platos":[{"nombre":"nombre exacto+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"desc corta","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
+Formato: {"platos":[{"nombre":"ingrediente exacto+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
 Sin comida: {"error":"No se detectó comida"}`,
     userContent, 1000);
 }
@@ -811,9 +812,10 @@ function MealCard({ meal, onDelete, onUpdate, apiKey, slots, profile, goals, isL
       const ctx = profile && goals ? buildCtx(profile, goals, [meal], {}) : "";
       const result = await callClaude(apiKey,
         `Nutricionista. Corrige la comida según la instrucción. ${ctx}
+REGLA ESTRICTA: La "descripcion" DEBE SER SOLO EL NOMBRE DEL PLATO, ULTRA CORTO (máximo 4-5 palabras, ej: "Tostadas con mermelada"). NUNCA des explicaciones ni detalles del cambio en la descripción. Los detalles de los alimentos van en la lista de ingredientes ("platos").
 SOLO JSON en una línea sin backticks.
-Formato: {"platos":[{"nombre":"nombre+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"desc actualizada"}`,
-        [{ type:"text", text:`Comida: ${meal.descripcion}. Ingredientes: ${(meal.platos||[]).map(p=>`${p.nombre}(${p.calorias}kcal)`).join(", ")}. Corrección: ${chatMsg.trim()}` }], 800);
+Formato: {"platos":[{"nombre":"nombre exacto modificado+cantidad","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre del plato ultra corto"}`,
+        [{ type:"text", text:`Comida actual: ${meal.descripcion}. Ingredientes: ${(meal.platos||[]).map(p=>`${p.nombre}(${p.calorias}kcal)`).join(", ")}. Instrucción del usuario para corregir: ${chatMsg.trim()}` }], 800);
       if (!result.error && result.platos) {
         onUpdate({ ...meal, ...result, totalCalorias: result.totalCalorias||0, totalProteinas: result.totalProteinas||0, totalCarbohidratos: result.totalCarbohidratos||0, totalGrasas: result.totalGrasas||0 });
         setChatOpen(false);
@@ -858,7 +860,7 @@ Formato: {"platos":[{"nombre":"nombre+cantidad","calorias":N,"proteinas":N,"carb
             </div>
           )}
 
-          <div style={{ fontSize:14, color:C.text, marginBottom:8, lineHeight:1.4, fontWeight:500 }}>{meal.descripcion}</div>
+          <div style={{ fontSize:15, color:C.text, marginBottom:8, lineHeight:1.4, fontWeight:600 }}>{meal.descripcion}</div>
           {meal.consejoPerfil && <div style={{ fontSize:12, color:C.greenNeon, marginBottom:8, lineHeight:1.4 }}>💡 {meal.consejoPerfil}</div>}
 
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -1512,7 +1514,6 @@ export default function App() {
   const [voiceText,   setVoiceText]   = useState("");
   const [voiceError,  setVoiceError]  = useState(null);
   
-  // Nuevo estado para mostrar/ocultar el panel de añadir comida
   const [showInputPanel, setShowInputPanel] = useState(false);
 
   const fileRef  = useRef();
@@ -1704,7 +1705,6 @@ export default function App() {
                <svg style={{ width:20, height:20, color:C.text2 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                <div style={{ position:"absolute", top:10, right:12, width:6, height:6, background:C.greenNeon, borderRadius:"50%" }} />
             </button>
-            {/* Foto de perfil eliminada de aquí */}
           </div>
         </div>
       </div>
