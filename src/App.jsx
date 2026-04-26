@@ -189,32 +189,48 @@ async function callClaude(apiKey, system, userContent, maxTokens = 800) {
 
 // ── Food analysis ─────────────────────────────────────────────
 async function analyzeFood(apiKey, text, base64, mediaType, profile, goals) {
-  const pCtx = profile ? `Usuario: objetivo=${profile.objetivo||"salud"}, dieta=${profile.dieta||"sin restricciones"}, peso=${profile.peso||75}kg.` : "";
+  const pCtx = profile
+    ? `Perfil: objetivo=${profile.objetivo||"salud"}, dieta=${profile.dieta||"sin restricciones"}, restricciones=${profile.restricciones||"ninguna"}, peso=${profile.peso||75}kg.`
+    : "";
   const userContent = base64
-    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con máxima precisión nutricional." }]
-    : [{ type:"text", text:`Analiza este texto de comida: ${text}` }];
+    ? [{ type:"image", source:{ type:"base64", media_type: mediaType||"image/jpeg", data:base64 } }, { type:"text", text:"Analiza esta comida con máxima precisión." }]
+    : [{ type:"text", text:`Analiza: ${text}` }];
   return callClaude(apiKey,
-    `Eres un nutricionista experto y un sistema de visión artificial avanzado. ${pCtx}
-REGLAS VITALES Y ESTRICTAS:
-1. IDENTIFICACIÓN PROFUNDA: Detecta cada ingrediente visible. Si hay métodos de cocción (frito, a la plancha), estima y SUMA esas calorías ocultas (aceites).
-2. CANTIDADES REALISTAS: Asigna gramos razonables basados en escalas estándar.
-3. DESCRIPCIÓN MINIMALISTA: La propiedad "descripcion" debe ser SOLO el nombre del plato en MÁXIMO 3 o 4 palabras (ej: "Pollo con arroz"). ¡CERO EXPLICACIONES!
-4. ESTRUCTURA DE PLATOS: En la lista "platos", el "nombre" debe ser ingrediente + cantidad (ej: "Pechuga de pollo (150g)").
-Genera SOLO un JSON válido en una sola línea.
-FORMATO EXACTO:
-{"platos":[{"nombre":"ingrediente exacto (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"NOMBRE GENÉRICO CORTO","consejoPerfil":"1 frase corta"}
-Si NO detectas comida: {"error":"No se detectó comida."}`,
-    userContent, 1000);
+    `Eres dietista-nutricionista experto en gastronomía española con visión computacional avanzada. ${pCtx}
+
+IDENTIFICACIÓN (fotos):
+- Examina TODO: colores, texturas, salsas, guarniciones, método de cocción
+- Distingue: tortilla francesa vs española, pechuga vs muslo, arroz blanco vs integral
+- Identifica TODOS los componentes del plato por separado
+
+CANTIDADES REALISTAS (no exageres ni minimices):
+- Plato pasta/arroz habitual ≈ 200-280g cocinado
+- Tostada grande molde ≈ 30g | baguette ≈ 40g | tostadita mini/regañá ≈ 10g
+- Filete/pechuga mediana ≈ 150g | huevo ≈ 60g | yogur ≈ 125g
+- Fresa ≈ 12g c/u — CUENTA exactamente las que veas, ni una más
+- Cucharada aceite visible ≈ 10g | sin aceite visible no lo inventes
+- NUNCA duplicar cantidades, NUNCA inventar ingredientes no visibles
+
+DESCRIPCION: SOLO nombre del plato en 2-4 palabras MÁXIMO. Sin explicaciones.
+PLATOS: cada ingrediente por separado con gramos (ej: "Pechuga plancha (150g)")
+
+SOLO JSON en una línea sin backticks:
+{"platos":[{"nombre":"Ingrediente (Xg)","calorias":N,"proteinas":N,"carbohidratos":N,"grasas":N}],"totalCalorias":N,"totalProteinas":N,"totalCarbohidratos":N,"totalGrasas":N,"descripcion":"nombre corto","consejoPerfil":"1 frase si encaja con objetivo del usuario"}
+Sin comida: {"error":"No se detectó comida"}`,
+    userContent, 1200);
 }
 
-async function getRecommendations(apiKey, meals, remainingSlots, totals, goals) {
-  const eaten = meals.map(m => `${m.slot}: ${m.totalCalorias} kcal`).join(", ");
+async function getRecommendations(apiKey, profile, goals, meals, history) {
+  const ctx = buildCtx(profile, goals, meals, history||{});
+  const totals = meals.reduce((a,m)=>({cal:a.cal+m.totalCalorias,p:a.p+(m.totalProteinas||0),c:a.c+(m.totalCarbohidratos||0),g:a.g+(m.totalGrasas||0)}),{cal:0,p:0,c:0,g:0});
+  const remaining = goals.calorias - totals.cal;
+  const recent = Object.values(history||{}).flatMap(d=>(d.meals||[]).map(m=>m.descripcion)).slice(-14).join(", ");
   return callClaude(apiKey,
-    `Eres nutricionista experto. Responde SOLO con JSON válido en una línea, sin backticks.
-Formato: {"comidas":[{"comida":"nombre","opciones":[{"sugerencia":"nombre del plato","cantidad":"gramos exactos de cada ingrediente ej: 150g pechuga + 80g arroz cocido","calorias":número,"emoji":"🍗"},{"sugerencia":"...","cantidad":"...","calorias":número,"emoji":"🥗"},{"sugerencia":"...","cantidad":"...","calorias":número,"emoji":"🍜"}]}],"consejo":"frase corta"}
-IMPORTANTE: "cantidad" debe tener los gramos exactos de cada ingrediente para no pasarse de calorías. Las calorías deben corresponder exactamente a esas cantidades. Adapta al contexto: pre-entreno=rápido sin cocinar, post-entreno=proteína, merienda=ligero, comida/cena=plato completo. Da 3 opciones por comida.`,
-    `Comido: ${eaten||"nada"} (${Math.round(totals.cal)} kcal de ${goals.calorias}). Faltan: ${remainingSlots.join(", ")}. Macros consumidos P${Math.round(totals.p)}g C${Math.round(totals.c)}g G${Math.round(totals.g)}g. Objetivos P${goals.proteinas}g C${goals.carbohidratos}g G${goals.grasas}g.`,
-    1200);
+    `Eres el nutricionista personal del usuario. Tienes toda su información:
+${ctx}
+SOLO JSON en una línea sin backticks.
+Formato: {"comidas":[{"comida":"nombre franja","opciones":[{"sugerencia":"plato","cantidad":"Xg ingrediente + Yg otro","calorias":N,"emoji":"🍗","porqueEncaja":"1 frase corta"},...3 opciones]}],"consejo":"consejo personalizado basado en el perfil y lo comido hoy"}`,
+    [{ type:"text", text:`Restan ${Math.round(remaining)} kcal. Evitar repetir: ${recent||"nada"}. Da recomendaciones adaptadas al perfil y objetivo. Máx 3 comidas.` }], 1500);
 }
 
 async function analyzeHealthScore(apiKey, base64) {
@@ -840,64 +856,75 @@ Formato: {"platos":[{"nombre":"ingrediente modificado (Xg)","calorias":N,"protei
   };
 
   return (
-    <div style={{ display:"flex", gap:16, position:"relative", paddingBottom:isLast ? 0 : 20 }}>
-       {!isLast && <div style={{ position:"absolute", left:43, top:26, bottom:0, width:1, background:C.border }} />}
+    <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"12px 14px", marginBottom:8 }}>
+      {meal.thumbnail && <img src={meal.thumbnail} alt="" style={{ width:"100%", maxHeight:160, objectFit:"cover", borderRadius:10, marginBottom:10, display:"block" }} />}
 
-       <div style={{ width:36, fontSize:11, color:C.text3, fontWeight:600, paddingTop:8, textAlign:"right" }}>{timeStr}</div>
+      {/* Header: time + actions */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          {timeStr && <span style={{ fontSize:11, color:C.text3, fontWeight:500 }}>{timeStr}</span>}
+          {onUpdate && <button onClick={() => setSlotOpen(p=>!p)}
+            style={{ fontSize:11, color:C.text3, background:`${accent}18`, border:"none", borderRadius:6, padding:"2px 7px", cursor:"pointer" }}>
+            ↕ mover
+          </button>}
+        </div>
+        <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+          {onUpdate && <button onClick={() => { setChatOpen(p=>!p); setChatMsg(""); }}
+            style={{ background:chatOpen?`${C.blue}22`:"none", border:chatOpen?`1px solid ${C.blue}44`:`1px solid ${C.border}`, borderRadius:8, padding:"3px 9px", cursor:"pointer", color:chatOpen?C.blue:C.text3, fontSize:12, fontWeight:600 }}>
+            ✏️
+          </button>}
+          {onDelete && <button onClick={onDelete}
+            style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:8, cursor:"pointer", color:C.text3, fontSize:13, lineHeight:1, padding:"3px 8px" }}>
+            ×
+          </button>}
+        </div>
+      </div>
 
-       <div style={{ position:"relative", zIndex:2, width:10, height:10, borderRadius:"50%", background:accent, border:`2px solid ${C.surface}`, marginTop:10, boxShadow:`0 0 8px ${accent}` }} />
+      {/* Slot selector */}
+      {slotOpen && (
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:10 }}>
+          {(slots||[]).map(sl => (
+            <button key={sl.id} onClick={() => { onUpdate({ ...meal, slot:sl.label, slotEmoji:sl.emoji }); setSlotOpen(false); }}
+              style={{ padding:"5px 11px", borderRadius:100, border:`1px solid ${meal.slot===sl.label?slotColor(sl.label):C.border}`, cursor:"pointer", background:meal.slot===sl.label?`${slotColor(sl.label)}22`:C.surface2, color:meal.slot===sl.label?slotColor(sl.label):C.text2, fontSize:12, fontWeight:600 }}>
+              {sl.emoji} {sl.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-       <div style={{ flex:1, background:"#121214", borderRadius:16, border:`1px solid ${C.border}`, padding:14 }}>
-          {meal.thumbnail && <img src={meal.thumbnail} alt="" style={{ width:"100%", maxHeight:140, objectFit:"cover", borderRadius:12, marginBottom:12, display:"block" }} />}
+      {/* Main: name + calories */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+        <div style={{ fontSize:15, color:C.text, lineHeight:1.35, fontWeight:600, flex:1, marginRight:12 }}>{meal.descripcion}</div>
+        <div style={{ textAlign:"right", flexShrink:0 }}>
+          <span style={{ fontSize:20, fontWeight:900, color:C.text }}>{meal.totalCalorias}</span>
+          <span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>kcal</span>
+        </div>
+      </div>
 
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <button onClick={() => onUpdate && setSlotOpen(p=>!p)}
-                style={{ fontSize:12, color:accent, fontWeight:700, background:"none", border:"none", cursor:onUpdate?"pointer":"default", padding:0 }}>
-                {meal.slotEmoji} {meal.slot}
-              </button>
-            </div>
-            <div style={{ display:"flex", gap:8 }}>
-              {onUpdate && <button onClick={() => { setChatOpen(p=>!p); setChatMsg(""); }} style={{ background:chatOpen?`${C.blue}22`:"none", border:chatOpen?`1px solid ${C.blue}44`:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer", color:chatOpen?C.blue:C.text3, fontSize:12, fontWeight:600 }}>✏️ corregir</button>}
-              {onDelete && <button onClick={onDelete} style={{ background:"none", border:"none", cursor:"pointer", color:C.text3, fontSize:18, lineHeight:1 }}>×</button>}
-            </div>
+      {/* AI tip */}
+      {meal.consejoPerfil && <div style={{ fontSize:12, color:C.greenNeon, marginBottom:8, lineHeight:1.4 }}>💡 {meal.consejoPerfil}</div>}
+
+      {/* Macros chips */}
+      <div style={{ display:"flex", gap:6 }}>
+        {[["P",meal.totalProteinas||0,C.blue],["C",meal.totalCarbohidratos||0,C.amber],["G",meal.totalGrasas||0,C.pink]].map(([l,v,col]) => (
+          <div key={l} style={{ background:`${col}15`, borderRadius:7, padding:"3px 8px", display:"flex", alignItems:"center", gap:4 }}>
+            <span style={{ fontSize:11, color:col, fontWeight:700 }}>{Math.round(v)}g</span>
+            <span style={{ fontSize:10, color:C.text3 }}>{l}</span>
           </div>
+        ))}
+      </div>
 
-          {slotOpen && (
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:12 }}>
-              {(slots||[]).map(sl => (
-                <button key={sl.id} onClick={() => { onUpdate({ ...meal, slot:sl.label, slotEmoji:sl.emoji }); setSlotOpen(false); }}
-                  style={{ padding:"5px 12px", borderRadius:100, border:"none", cursor:"pointer", background: meal.slot===sl.label ? C.text : C.surface2, color: meal.slot===sl.label ? C.bg : C.text2, fontSize:12, fontWeight:700 }}>
-                  {sl.emoji} {sl.label}
-                </button>
-              ))}
+      {/* Ingredients detail */}
+      {meal.platos?.length > 0 && (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+          {meal.platos.map((p,i) => (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+              <span style={{ fontSize:12, color:C.text2 }}>{p.nombre}</span>
+              <span style={{ fontSize:12, color:C.orange, fontWeight:700 }}>{p.calorias} kcal</span>
             </div>
-          )}
-
-          <div style={{ fontSize:15, color:C.text, marginBottom:8, lineHeight:1.4, fontWeight:600 }}>{meal.descripcion}</div>
-          {meal.consejoPerfil && <div style={{ fontSize:12, color:C.greenNeon, marginBottom:8, lineHeight:1.4 }}>💡 {meal.consejoPerfil}</div>}
-
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <div style={{ display:"flex", gap:6 }}>
-              {[["P",meal.totalProteinas||0,C.blue],["C",meal.totalCarbohidratos||0,C.amber],["G",meal.totalGrasas||0,C.pink]].map(([l,v,col]) => (
-                <div key={l} style={{ padding:"4px 10px", background:C.surface2, borderRadius:8, textAlign:"center" }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:col }}>{Math.round(v)}g</div>
-                  <div style={{ fontSize:9, color:C.text3 }}>{l}</div>
-                </div>
-              ))}
-            </div>
-            <div><span style={{ fontSize:18, fontWeight:900 }}>{meal.totalCalorias}</span><span style={{ fontSize:11, color:C.text3, marginLeft:3 }}>kcal</span></div>
-          </div>
-
-          {meal.platos?.length > 0 && (
-            <div style={{ marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
-              {meal.platos.map((p,i) => (
-                <div key={i} style={{ fontSize:12, display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                  <span style={{ color:C.text2 }}>{p.nombre}</span><span style={{ color:C.text, fontWeight:700, fontSize:13 }}>{p.calorias} kcal</span>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
+        </div>
+      )}
 
           {chatOpen && (
             <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
@@ -921,7 +948,6 @@ Formato: {"platos":[{"nombre":"ingrediente modificado (Xg)","calorias":N,"protei
               </div>
             </div>
           )}
-       </div>
     </div>
   );
 }
@@ -989,7 +1015,7 @@ function CalView({ history, goals, onSelect, selected }) {
   );
 }
 
-function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetKey, onResetProfile }) {
+function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetKey, onResetProfile, themeMode, setThemeMode }) {
   const [lg, setLg] = useState({...goals});
   const [lm, setLm] = useState(slots.map(m=>({...m})));
   const [newLbl, setNewLbl] = useState("");
@@ -1004,7 +1030,7 @@ function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetK
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:200, overflowY:"auto", padding:"24px 20px" }}>
+    <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:200, overflowY:"auto", padding:"24px 20px", transition:"background 0.3s" }}>
       <div style={{ maxWidth:430, margin:"0 auto" }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:28 }}>
           <div style={{ fontSize:20, fontWeight:900 }}>Personalizar</div>
@@ -1025,6 +1051,18 @@ function Settings({ goals, setGoals, slots, setSlots, profile, onClose, onResetK
             {profile.consejo && <div style={{ fontSize:12, color:C.text2, lineHeight:1.4, marginTop:10 }}>💡 {profile.consejo}</div>}
           </div>
         )}
+        {/* Theme toggle */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"14px 16px", marginBottom:16 }}>
+          <div>
+            <div style={{ fontSize:14, fontWeight:600, color:C.text }}>Apariencia</div>
+            <div style={{ fontSize:12, color:C.text3, marginTop:2 }}>{themeMode === "dark" ? "Modo oscuro" : "Modo claro"}</div>
+          </div>
+          <button onClick={() => setThemeMode(p => p === "dark" ? "light" : "dark")}
+            style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 14px", background:themeMode==="dark"?C.surface2:C.blue, border:`1px solid ${C.border}`, borderRadius:100, cursor:"pointer", color:themeMode==="dark"?C.text2:C.text, fontWeight:700, fontSize:13, transition:"all 0.2s" }}>
+            {themeMode === "dark" ? "🌙 Oscuro" : "☀️ Claro"}
+          </button>
+        </div>
+
         <span style={S.label}>Objetivo diario</span>
         <div style={{ ...S.card, marginBottom:8 }}>
           {[["calorias","Calorías","kcal",C.orange],["proteinas","Proteínas","g",C.blue],["carbohidratos","Carbohidratos","g",C.amber],["grasas","Grasas","g",C.pink]].map(([key,label,unit,color],i,arr) => (
@@ -1502,6 +1540,12 @@ export default function App() {
   const [apiKey,      setApiKey]      = useState(() => ls.get("nl-apikey") || "");
   const [profile,     setProfile]     = useState(() => ls.get("nl-profile") || null);
   const [splash,      setSplash]      = useState(() => !!ls.get("nl-profile"));
+  const [themeMode,   setThemeMode]   = useState(() => ls.get("nl-theme") || "dark");
+
+  // Apply theme globally on state change
+  useEffect(() => { setTheme(themeMode); ls.set("nl-theme", themeMode); }, [themeMode]);
+  // Apply on first render
+  useEffect(() => { setTheme(themeMode); }, []);
   const [showCoach,   setShowCoach]   = useState(false);
   const [showPlan,    setShowPlan]    = useState(false);
   const [meals,       setMeals]       = useState(() => {
@@ -1634,7 +1678,7 @@ export default function App() {
   const processImage = useCallback(async (file) => {
     if (!file) return;
     const isHeic = file.type==="image/heic"||file.type==="image/heif"||(file.name||"").toLowerCase().endsWith(".heic")||(file.name||"").toLowerCase().endsWith(".heif");
-    if (isHeic) { setError("Formato HEIC no compatible. Ve a Ajustes → Cámara → Formatos → Más compatible."); return; }
+    if (isHeic) { addToast("Formato HEIC no compatible. Ve a Ajustes → Cámara → Formatos.", "warning"); return; }
     try {
       const { bigBase64, bigMime, smallThumbnail } = await new Promise((res, rej) => {
         const reader = new FileReader();
@@ -1735,13 +1779,16 @@ export default function App() {
     { msg:`Ayer estuviste en objetivo. ¡Sigue así hoy!`, color:C.blue, icon:"🎯" }
   ) : null;
 
+  // Re-render trigger for theme
+  const _theme = themeMode;
+
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:90 }}>
+    <div key={themeMode} style={{ minHeight:"100vh", background:C.bg, fontFamily:"-apple-system,'SF Pro Display','Helvetica Neue',sans-serif", color:C.text, maxWidth:430, margin:"0 auto", paddingBottom:90, transition:"background 0.3s, color 0.3s" }}>
       {/* Overlays */}
       {splash      && <SplashScreen onDone={() => setSplash(false)} />}
       {confirm     && <ConfirmDialog msg={confirm.msg} onConfirm={confirm.onConfirm} onCancel={()=>setConfirm(null)} />}
       {toasts.map(t=><Toast key={t.id} msg={t.msg} type={t.type} onDone={()=>removeToast(t.id)}/>)}
-      {showSet     && <Settings goals={goals} setGoals={setGoals} slots={slots} setSlots={sl=>{setSlots(sl);if(!sl.find(s=>s.id===selSlot))setSelSlot(sl[0]?.id);}} profile={profile} onClose={()=>setShowSet(false)} onResetKey={resetApiKey} onResetProfile={()=>{ls.set("nl-profile",null);setProfile(null);setSplash(false);}} />}
+      {showSet     && <Settings goals={goals} setGoals={setGoals} slots={slots} setSlots={sl=>{setSlots(sl);if(!sl.find(s=>s.id===selSlot))setSelSlot(sl[0]?.id);}} profile={profile} onClose={()=>setShowSet(false)} onResetKey={resetApiKey} onResetProfile={()=>{ls.set("nl-profile",null);setProfile(null);setSplash(false);}} themeMode={themeMode} setThemeMode={setThemeMode} />}
       {showHealth  && <HealthScorePanel onClose={()=>setShowHealth(false)} apiKey={apiKey} />}
       {showCoach   && <AICoachPanel onClose={()=>setShowCoach(false)} apiKey={apiKey} profile={profile} goals={goals} history={history} meals={meals} setGoals={setGoals} />}
       {showPlan    && <WeeklyPlanPanel onClose={()=>setShowPlan(false)} apiKey={apiKey} profile={profile} goals={goals} />}
@@ -1796,65 +1843,94 @@ export default function App() {
 
       <div style={{ padding:"0 20px 0", position:"relative", zIndex:1 }}>
         
-        {/* PREMIUM CALORIE CARD - Imagen estática por sesión con base de color anti-negro */}
-        <div style={{ position:"relative", borderRadius:24, overflow:"hidden", border:`1px solid ${C.border}`, padding:20, marginBottom:16, boxShadow:"0 10px 30px rgba(0,0,0,0.5)", backgroundColor:"#1c1c1e" }}>
-            
-            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${bgImg})`, backgroundSize:"cover", backgroundPosition:"center" }} />
-            <div style={{ position:"absolute", inset:0, background:`linear-gradient(135deg, rgba(18,18,20,0.95) 40%, rgba(18,18,20,0.6) 100%)` }} />
+        {/* CALORIE CARD */}
+        {(() => {
+          const ringPct = Math.min(pct, 100);
+          const r = 44, cx = 52, cy = 52;
+          const circ = 2 * Math.PI * r;
+          const ringCol = pct < 50 ? C.greenNeon : pct < 85 ? C.amber : pct < 100 ? C.orange : C.red;
+          return (
+          <div style={{ position:"relative", borderRadius:22, overflow:"hidden", border:`1px solid ${C.border}`, padding:"18px 18px 14px", marginBottom:10, backgroundColor:C.surface2 }}>
+            {/* Bg image subtle */}
+            <div style={{ position:"absolute", inset:0, backgroundImage:`url(${bgImg})`, backgroundSize:"cover", backgroundPosition:"center", opacity:themeMode==="light"?0.08:0.18 }} />
+            <div style={{ position:"absolute", inset:0, background:themeMode==="light"
+              ? "linear-gradient(135deg, rgba(245,245,247,0.97) 0%, rgba(245,245,247,0.88) 100%)"
+              : "linear-gradient(135deg, rgba(18,18,20,0.97) 0%, rgba(18,18,20,0.85) 100%)" }} />
 
-            <div style={{ position:"relative", zIndex:10, display:"flex", justifyContent:"space-between" }}>
-                <div style={{ flex:1 }}>
-                    <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>CONSUMIDAS</div>
-                    <div style={{ display:"flex", alignItems:"baseline", gap:4 }}>
-                        <AnimatedNumber value={Math.round(totals.cal)} style={{ fontSize:48, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:-1 }} />
-                        <span style={{ fontSize:14, color:C.text2, fontWeight:600 }}>kcal</span>
-                    </div>
-                    <div style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"4px 10px", background:"rgba(0,183,255,0.1)", border:"1px solid rgba(0,183,255,0.2)", borderRadius:100, marginTop:12 }}>
-                        <span style={{ color:C.cyan, fontSize:12 }}>✓</span>
-                        <span style={{ color:C.cyan, fontSize:11, fontWeight:700 }}>{Math.round(pct)}% de tu objetivo</span>
-                    </div>
-
-                    <div style={{ display:"flex", gap:24, marginTop:24 }}>
-                        <div>
-                            <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>RESTANTES</div>
-                            <div style={{ fontSize:16, fontWeight:900, color:"#fbbf24" }}>{Math.max(0, remaining)} kcal</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>OBJETIVO</div>
-                            <div style={{ fontSize:16, fontWeight:900, color:C.text }}>{goals.calorias} kcal</div>
-                        </div>
-                    </div>
+            <div style={{ position:"relative", zIndex:2 }}>
+              {/* Top row: big number + ring */}
+              <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:14 }}>
+                {/* Ring — cleaner, no particles */}
+                <div style={{ position:"relative", width:104, height:104, flexShrink:0 }}>
+                  <svg width="104" height="104" viewBox="0 0 104 104" style={{ transform:"rotate(-90deg)" }}>
+                    <defs>
+                      <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={ringCol} stopOpacity="0.7"/>
+                        <stop offset="100%" stopColor={ringCol}/>
+                      </linearGradient>
+                    </defs>
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke={C.border2} strokeWidth="8"/>
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="url(#rg)" strokeWidth="8"
+                      strokeLinecap="round" strokeDasharray={circ}
+                      strokeDashoffset={circ*(1-ringPct/100)}
+                      style={{ transition:"stroke-dashoffset 0.8s ease, stroke 0.4s" }}/>
+                  </svg>
+                  <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ fontSize:20, fontWeight:900, color:ringCol, lineHeight:1 }}>{Math.round(pct)}%</span>
+                    <span style={{ fontSize:9, color:C.text3, marginTop:2 }}>objetivo</span>
+                  </div>
                 </div>
 
-                {/* Futuristic Neo Ring */}
-                <div style={{ position:"relative", width:120, height:120, display:"flex", alignItems:"center", justifyItems:"center", flexShrink:0 }}>
-                    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform:"rotate(-90deg)", filter:"drop-shadow(0 0 12px rgba(6, 182, 212, 0.6))" }}>
-                        <defs>
-                          <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor={C.cyan} /> 
-                            <stop offset="100%" stopColor="#fbbf24" />
-                          </linearGradient>
-                        </defs>
-                        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8"/>
-                        <circle cx="60" cy="60" r="50" fill="none" stroke="url(#ringGradient)" strokeWidth="8" strokeLinecap="round"
-                          strokeDasharray="314" strokeDashoffset={`${314*(1-pct/100)}`}
-                          style={{ transition:"stroke-dashoffset 0.8s ease" }}/>
-                        <path d="M 60 10 A 50 50 0 0 1 110 60" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="5 300" strokeDashoffset="0" style={{ animation: "ringFlow 1.5s linear infinite", opacity: 0.3 }}/>
-                        <path d="M 10 60 A 50 50 0 0 1 60 110" fill="none" stroke="#fff" strokeWidth="1" strokeDasharray="8 250" strokeDashoffset="0" style={{ animation: "ringFlow 2s linear infinite", opacity: 0.15, animationDelay: "-0.5s" }}/>
-                    </svg>
+                {/* Numbers */}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1.5, marginBottom:3 }}>CONSUMIDAS</div>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:5, marginBottom:10 }}>
+                    <AnimatedNumber value={Math.round(totals.cal)} style={{ fontSize:42, fontWeight:900, color:C.text, lineHeight:1, letterSpacing:-1 }} />
+                    <span style={{ fontSize:13, color:C.text2 }}>kcal</span>
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ background:C.border, borderRadius:4, height:5, overflow:"hidden", marginBottom:8 }}>
+                    <div style={{ width:`${ringPct}%`, height:"100%", background:`linear-gradient(90deg,${ringCol}88,${ringCol})`, borderRadius:4, transition:"width 0.7s ease" }}/>
+                  </div>
+                  {/* Remaining + goal */}
+                  <div style={{ display:"flex", justifyContent:"space-between" }}>
+                    <div>
+                      <span style={{ fontSize:16, fontWeight:900, color:remaining>=0?C.greenNeon:C.red }}>{Math.abs(Math.round(remaining))}</span>
+                      <span style={{ fontSize:11, color:C.text3, marginLeft:4 }}>{remaining>=0?"restantes":"excedidas"}</span>
+                    </div>
+                    <span style={{ fontSize:11, color:C.text3 }}>{goals.calorias} kcal obj.</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Macros inline row */}
+              <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:12, display:"flex", gap:10, alignItems:"center" }}>
+                {[
+                  ["Prot.", totals.p, goals.proteinas, C.blue],
+                  ["Carbos", totals.c, goals.carbohidratos, C.amber],
+                  ["Grasas", totals.g, goals.grasas, C.purple],
+                ].map(([label, val, goal, color]) => {
+                  const mp = Math.min((val/goal)*100, 100);
+                  return (
+                    <div key={label} style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                        <span style={{ fontSize:11, color:C.text3 }}>{label}</span>
+                        <span style={{ fontSize:11, fontWeight:700, color }}>{Math.round(val)}g</span>
+                      </div>
+                      <div style={{ background:C.border, borderRadius:3, height:4, overflow:"hidden" }}>
+                        <div style={{ width:`${mp}%`, height:"100%", background:color, borderRadius:3, transition:"width 0.6s" }}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-        </div>
-
-        {/* PREMIUM MACROS ROW */}
-        <div style={{ display:"flex", gap:12, marginBottom:24 }}>
-          <PremiumMacroCard label="Proteínas" value={totals.p} goal={goals.proteinas} color={C.blue} bgUrl="https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?q=80&w=400&auto=format&fit=crop" />
-          <PremiumMacroCard label="Carbohidratos" value={totals.c} goal={goals.carbohidratos} color={C.amber} bgUrl="https://images.unsplash.com/photo-1586201375761-83865001e31c?q=80&w=400&auto=format&fit=crop" />
-          <PremiumMacroCard label="Grasas" value={totals.g} goal={goals.grasas} color={C.purple} bgUrl="https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?q=80&w=400&auto=format&fit=crop" />
-        </div>
+          </div>
+          );
+        })()}
 
         {/* PREMIUM ACTION BAR (3 Botones limpios) */}
-        <div style={{ display:"flex", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:6, marginBottom:24 }}>
+        <div style={{ display:"flex", background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:6, marginBottom:16 }}>
           <button onClick={()=>setShowHealth(true)} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"8px 0", background:"transparent", border:"none", cursor:"pointer", transition:"opacity 0.2s" }}>
               <svg style={{ width:22, height:22, color:C.greenNeon, marginBottom:6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10v4c0 3.3 2.7 6 6 6h6c3.3 0 6-2.7 6-6v-4M3 10V6c0-3.3 2.7-6 6-6h6c3.3 0 6 2.7 6 6v4M12 7v4M8 11h8"></path></svg>
               <span style={{ fontSize:10, color:C.text2, lineHeight:1.2, fontWeight:500 }}>Escanear</span>
@@ -1966,44 +2042,49 @@ export default function App() {
             )}
 
 
-            {/* REGISTRO DE HOY (TIMELINE) */}
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, marginTop:8 }}>
-                <h3 style={{ fontSize:11, fontWeight:800, color:C.text3, letterSpacing:1.5, margin:0 }}>REGISTRO DE HOY</h3>
-                <button style={{ background:"none", border:"none", color:C.text3, fontSize:11, display:"flex", alignItems:"center", gap:4, cursor:"pointer" }}>Ver todo <span style={{fontSize:14}}>›</span></button>
-            </div>
-
-            {meals.length>0 ? (
-              <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:24, padding:"20px", marginBottom:24 }}>
-                {meals.map((m, index) => (
-                  <MealCard 
-                    key={m.id} meal={m} apiKey={apiKey} slots={slots}
-                    isLast={index === meals.length - 1}
-                    onDelete={()=>setConfirm({msg:`¿Eliminar esta comida?`,onConfirm:()=>{setMeals(p=>p.filter(x=>x.id!==m.id));setRecs(null);addToast("Comida eliminada");setConfirm(null);}})}
-                    onUpdate={updated=>setMeals(p=>p.map(x=>x.id===updated.id?updated:x))}
-                    profile={profile} goals={goals}
-                  />
-                ))}
-
-                {/* Timeline Footer Summary */}
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background:C.surface2, borderRadius:16, padding:16, marginTop:20, border:`1px solid ${C.border}` }}>
-                    <div style={{ textAlign:"center", flex:1 }}>
-                        <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>TOTAL CONSUMIDO</div>
-                        <div style={{ fontSize:18, fontWeight:900, color:C.text }}>{Math.round(totals.cal)} <span style={{ fontSize:12, color:C.text3, fontWeight:500 }}>kcal</span></div>
+            {/* REGISTRO DE HOY — agrupado por franja */}
+            {meals.length > 0 && slots
+              .filter(sl => meals.some(m => m.slot === sl.label))
+              .map(sl => {
+                const slotMeals = meals.filter(m => m.slot === sl.label);
+                const slotTotal = slotMeals.reduce((s,m) => s+m.totalCalorias, 0);
+                const accent = slotColor(sl.label);
+                return (
+                  <div key={sl.label} style={{ marginBottom:12 }}>
+                    {/* Slot header */}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:6, paddingLeft:2 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                        <div style={{ width:3, height:16, borderRadius:2, background:accent }}/>
+                        <span style={{ fontSize:13, fontWeight:700, color:accent }}>{sl.emoji} {sl.label}</span>
+                      </div>
+                      <span style={{ fontSize:13, fontWeight:800, color:C.text }}>{slotTotal} <span style={{ fontSize:11, color:C.text3, fontWeight:400 }}>kcal</span></span>
                     </div>
-                    <div style={{ width:40, height:40, borderRadius:"50%", background:`rgba(0,183,255,0.1)`, display:"flex", alignItems:"center", justifyContent:"center", color:C.cyan, fontSize:18, flexShrink:0 }}>🔥</div>
-                    <div style={{ textAlign:"center", flex:1 }}>
-                        <div style={{ fontSize:10, color:C.text3, fontWeight:700, letterSpacing:1, marginBottom:4 }}>TE FALTAN</div>
-                        <div style={{ fontSize:18, fontWeight:900, color:C.cyan }}>{Math.max(0, remaining)} <span style={{ fontSize:12, color:C.cyan, fontWeight:500 }}>kcal</span></div>
-                    </div>
-                </div>
-              </div>
-            ) : (
-              <div style={{ textAlign:"center", padding:"32px 20px", background:C.surface, borderRadius:24, border:`1px solid ${C.border}`, marginBottom:24 }}>
-                <div style={{ fontSize:40, marginBottom:8, opacity:0.8 }}>🍽️</div>
-                <div style={{ fontSize:15, fontWeight:700, color:C.text2, marginBottom:6 }}>Sin comidas hoy</div>
-                <div style={{ fontSize:13, color:C.text3 }}>Usa el botón "+" abajo para empezar</div>
-              </div>
-            )}
+                    {slotMeals.map((m, index) => (
+                      <MealCard
+                        key={m.id} meal={m} apiKey={apiKey} slots={slots}
+                        isLast={index === slotMeals.length - 1}
+                        onDelete={()=>setConfirm({msg:`¿Eliminar esta comida?`,onConfirm:()=>{setMeals(p=>p.filter(x=>x.id!==m.id));setRecs(null);addToast("Comida eliminada");setConfirm(null);}})}
+                        onUpdate={updated=>setMeals(p=>p.map(x=>x.id===updated.id?updated:x))}
+                        profile={profile} goals={goals}
+                      />
+                    ))}
+                  </div>
+                );
+              })
+            }
+            {/* Also show meals whose slot isn't in current slots list */}
+            {meals.length > 0 && meals
+              .filter(m => !slots.some(sl => sl.label === m.slot))
+              .map(m => (
+                <MealCard
+                  key={m.id} meal={m} apiKey={apiKey} slots={slots}
+                  isLast={true}
+                  onDelete={()=>setConfirm({msg:`¿Eliminar esta comida?`,onConfirm:()=>{setMeals(p=>p.filter(x=>x.id!==m.id));setRecs(null);addToast("Comida eliminada");setConfirm(null);}})}
+                  onUpdate={updated=>setMeals(p=>p.map(x=>x.id===updated.id?updated:x))}
+                  profile={profile} goals={goals}
+                />
+              ))
+            }
 
             {/* CONSEJO DEL DÍA BANNER */}
             <div style={{ position:"relative", borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, padding:16, marginTop:16, marginBottom:24, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
